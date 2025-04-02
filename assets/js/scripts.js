@@ -1,25 +1,32 @@
-Element.prototype.appendElements=function(J,m){
+Element.prototype.appendElements = function (J, m) {
 var h = this,
 w = document.createElement('template');
-w.innerHTML=J,
-Array.from(w.content.children).forEach(function(M,W){
-if(M.nodeName=='SCRIPT'){
+w.innerHTML = J;
+for (const M of Array.from(w.content.children)) {
+if (M.nodeName === 'SCRIPT') {
 var c = document.createElement('script');
-if(M.src!='')c.src=M.src;
-if(M.async!=undefined){c.async=M.async};
-if(M.defer!=undefined){c.defer=M.defer};
-if(M.textContent!=''){c.textContent=M.textContent};
+if (M.src !== '') c.src = M.src;
+if (M.async !== undefined) c.async = M.async;
+if (M.defer !== undefined) c.defer = M.defer;
+if (M.textContent !== '') c.textContent = M.textContent;
 h[m](c);
+} else {
+h[m](M);
 }
-else h[m](M);
-});
+}
 };
 (function(){
 let archiveData={},
 Error = ['<div class="errorFetch">'+ 'هناك خطأ ما' + '...</div>','<div class="noFetch">' + Msg.noResultsFound + "</div>"];
 PostCount = typeof PostCount !== 'undefined' ? PostCount:0;
 feed_count = Math.ceil(PostCount / 150);
-typeof _bl !== 'undefined' ? _bl.forEach(function(Jx){archiveData[Jx.split(':')[0]]=parseInt(Jx.split(':')[1]);}):archiveData={};
+if (typeof _bl !== 'undefined') {
+for (const Jx of _bl) {
+archiveData[Jx.split(':')[0]] = parseInt(Jx.split(':')[1]);
+}
+} else {
+archiveData = {};
+}
 /*============================================================
 -->> GET FUNCTIONS
 ==============================================================*/
