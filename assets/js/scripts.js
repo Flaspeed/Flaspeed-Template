@@ -32,6 +32,7 @@ archiveData = {};
 ==============================================================*/
 window.addEventListener('scroll', () => InitiScripts(),{once:true});
 labelMaxSet();
+MainMenu();
 
 /*============================================================
 -->> labelMaxSet()
@@ -78,6 +79,98 @@ new Function(Kv)();
 BlogId = _WidgetManager._GetAllData().blog.blogId;
 });
 }
+
+/*============================================================
+-->> MainMenu()
+==============================================================*/
+function MainMenu() {
+// إضافة مُعرّف لكل عنصر li في القائمة الرئيسية
+if (document.querySelector('.menu-bar > ul > li')) {
+var mainItems = document.querySelectorAll('.menu-bar > ul > li');
+for (var i = 0, len = mainItems.length; i < len; i++) {
+mainItems[i].setAttribute('id', 'listitem-' + i);
+}
+}
+// إزالة القوائم الفرعية الفارغة داخل عناصر القائمة
+var menuItems = document.querySelectorAll('.menu-bar li');
+for (var j = 0, len2 = menuItems.length; j < len2; j++) {
+var emptyList = menuItems[j].querySelector('ul:empty');
+if (emptyList) {
+emptyList.remove();
+}
+}
+// تعديل خاصية title للروابط داخل القائمة الرئيسية
+if (document.querySelector('#menu-bar ul li > a')) {
+var titleLinks = document.querySelectorAll('#menu-bar ul li > a');
+for (var k = 0, len3 = titleLinks.length; k < len3; k++) {
+var currentTitle = titleLinks[k].getAttribute('title');
+titleLinks[k].setAttribute('title', currentTitle.replace(/(<[^>]*>|_)/g, '').replace(/#/g, ''));
+}
+}
+// تعديل محتوى الروابط داخل القائمة الفرعية
+if (document.querySelector('#menu-bar .subMenu a')) {
+var subMenuLinks = document.querySelectorAll('#menu-bar .subMenu a');
+for (var l = 0, len4 = subMenuLinks.length; l < len4; l++) {
+subMenuLinks[l].innerHTML = subMenuLinks[l].innerHTML.replace(/_/g, '').replace(/#/g, '');
+}
+}
+// إزالة القوائم داخل MegaMenu
+if (document.querySelector('#menu-bar .MegaMenu > ul')) {
+var megaUl = document.querySelectorAll('#menu-bar .MegaMenu > ul');
+for (var m = 0, len5 = megaUl.length; m < len5; m++) {
+if (megaUl[m]) {
+megaUl[m].remove();
+}
+}
+}
+// إزالة القوائم داخل عناصر القائمة التي ليست من نوع sub-menu
+if (document.querySelector('.menu-bar > ul > li:not(.sub-menu) > ul')) {
+var nonSubMenus = document.querySelectorAll('.menu-bar > ul > li:not(.sub-menu) > ul');
+for (var n = 0, len6 = nonSubMenus.length; n < len6; n++) {
+if (nonSubMenus[n]) {
+nonSubMenus[n].remove();
+}
+}
+}
+// إضافة مستمع للنقرات على الروابط داخل القائمة الفرعية داخل nav-drawer
+if (document.querySelector('.nav-drawer #menu-bar .sub-menu > a')) {
+var navSubLinks = document.querySelectorAll('.nav-drawer #menu-bar .sub-menu > a');
+for (var o = 0, len7 = navSubLinks.length; o < len7; o++) {
+navSubLinks[o].addEventListener('click', function(evt) {
+evt.preventDefault();
+var sibling = this.nextElementSibling;
+if (window.getComputedStyle(sibling).display === 'none') {
+sibling.slideDown(200, 'block');
+this.classList.add('expanded');
+} else {
+sibling.slideUp(200);
+this.classList.remove('expanded');
+}
+});
+}
+}
+// دالة للتعامل مع MegaMenu
+function megaClick() {
+var megaLinks = document.querySelectorAll(".MegaMenu a");
+for (var p = 0, len8 = megaLinks.length; p < len8; p++) {
+var linkElem = megaLinks[p];
+if (linkElem.dataset.info) {
+var parsedInfo = JSON.parse(linkElem.dataset.info);
+var labelVal = parsedInfo.mglabel;
+linkElem.setAttribute("href", `${SearchUrl}/label/${encodeURIComponent(labelVal)}?max-results=${getMaxResults}`);
+linkElem.removeAttribute('data-info');
+}
+}
+}
+// مستمع للأحداث للنقر على زر فتح القائمة على الموبايل
+document.addEventListener("click", function(event) {
+var btnElem = event.target.closest('.openNavMobile');
+if (!btnElem) return;
+megaClick();
+});
+}
+
+
 /*============================================================
 -->> elemFeed()
 ==============================================================*/
