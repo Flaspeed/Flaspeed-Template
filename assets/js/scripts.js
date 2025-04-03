@@ -98,7 +98,7 @@ emptyList.remove();
 }
 }
 if (document.querySelector('#menu-bar ul li > a')) {
-var titleLinks = document.querySelectorAll('#menu-bar ul li > a');
+var titleLinks = document.querySelectorAll('#menu-bar ul li > a:not(.homeicon)');
 for (var k = 0, len3 = titleLinks.length; k < len3; k++) {
 var currentTitle = titleLinks[k].getAttribute('title');
 titleLinks[k].setAttribute('title', currentTitle.replace(/(<[^>]*>|_)/g, '').replace(/#/g, ''));
