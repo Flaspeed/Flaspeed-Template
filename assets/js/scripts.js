@@ -33,7 +33,7 @@ archiveData = {};
 window.addEventListener('scroll', () => InitiScripts(),{once:true});
 labelMaxSet();
 MainMenu();
-console.log(Error[0]);
+
 /*============================================================
 -->> labelMaxSet()
 ==============================================================*/
