@@ -384,7 +384,9 @@ parentElement.classList.add("post-from-tag");
 }
 element.parentElement.innerHTML = GetHtml(data, element);
 LazyImages("data-src");
+loadClass();
 
+if(document.querySelector("#menu-bar .MegaMenu")){
 const megaMenus = document.querySelectorAll(".MegaMenu");
 for (let j = 0, len2 = megaMenus.length; j < len2; j++) {
 const megaMenu = megaMenus[j],
@@ -408,6 +410,7 @@ for (let m = 0; m < posts.length; m++) {
 posts[m].querySelector(".fa-video").style.transform = "scale(0)";
 }
 });
+}
 }
 },
 function (){
@@ -453,5 +456,169 @@ link.removeAttribute('data-info');
 })(megaMenus[i]);
 }
 }
+
+
+
+
+
+
+
+/*============================================================
+-->> Bookmark()
+==============================================================*/
+let list = {};
+document.getElementById("bookmark-count").classList.add('active');
+document.getElementById("bookmark-count").textContent = '0';
+function pushToStorage(data) {
+if (typeof Storage !== "undefined") {
+localStorage.setItem("list", JSON.stringify(data));
+}
+}
+function clearBookmarks() {
+const wrapper = document.querySelector("#vBookmarks"),
+posts = wrapper.querySelector(".bm-posts"),
+clearAll = wrapper.querySelector(".clearAll"),
+bmDetails = wrapper.querySelector(".bmDetails");
+if (Object.keys(list).length > 0) {
+clearAll.classList.remove('hide');
+bmDetails.classList.add('hide');
+} else {
+clearAll.classList.add('hide');
+bmDetails.classList.remove('hide');
+}
+clearAll.addEventListener("click", () => {
+list = {};
+posts.innerHTML = "";
+clearAll.classList.add('hide');
+bmDetails.classList.remove('hide');
+localStorage.removeItem("list");
+countBookmarks();
+document.querySelectorAll(".post .postSave.filled").forEach(el => el.classList.remove("filled"));
+});
+}
+function clearItem(post){
+if(post){
+document.querySelectorAll('.bm-posts .post').forEach(items => {
+const trash = items.querySelector('.clearItem');
+trash.addEventListener("click", () => {
+const id = items.dataset.item,
+listCount = Object.keys(list).length;
+if(listCount === 1){
+document.querySelector("#vBookmarks .clearAll").click();
+} else {
+if (list[id]) {
+delete list[id];
+pushToStorage(list);
+document.querySelector(`.post[data-item='${id}'] .postSave.filled`) ? document.querySelector(`.post[data-item='${id}'] .postSave`).classList.remove("filled") : '';
+const getDataId = document.querySelector(`#vBookmarks .bm-posts .post[data-item='${id}'] .tooltipped`).getAttribute('data-tooltip-id');
+document.querySelector(`#vBookmarks .bm-posts .post[data-item='${id}']`).remove();
+if(document.getElementById(getDataId)){document.getElementById(getDataId).remove()};
+}
+countBookmarks();
+}
+});
+});
+}
+}
+function countBookmarks() {
+const bmCount = document.getElementById("bookmark-count"),
+count = Object.keys(list).length;
+if (count > 0) {
+bmCount.parentElement.classList.add('an-extra');
+bmCount.nextElementSibling.innerHTML = '<i class="fa fa-bookmark"></i>';
+if (count < 10) {
+bmCount.textContent = count;
+} else {
+bmCount.textContent = '+9';
+}
+} else {
+bmCount.parentElement.classList.remove('an-extra');
+bmCount.nextElementSibling.innerHTML = '<i class="fa fa-bookmark-slash"></i>';
+bmCount.textContent = '0';
+}
+}
+function loadClass() {
+const storedList = JSON.parse(localStorage.getItem("list"));
+if (storedList) {
+Object.keys(storedList).forEach(key => {
+const post = document.querySelector(`.cates .post[data-item='${key}']`);
+if (post) {
+const postSave = post.querySelector(".postSave");
+if (postSave) {
+postSave.classList.add("filled");
+}
+}
+});
+}
+}
+function loadExisting() {
+const wrapperPosts = document.querySelector("#vBookmarks .bm-posts"),
+storedList = JSON.parse(localStorage.getItem("list"));
+if (storedList) {
+list = storedList;
+Object.keys(list).forEach(key => {
+document.addEventListener("click", function(event) {
+const btn = event.target.closest('[data-target="vBookmarks"]');
+if (!btn) return;
+if (!wrapperPosts.innerHTML.includes(key) && list[key]) {
+wrapperPosts.innerHTML += list[key];
+}
+LazyImages('data-src');
+clearItem(wrapperPosts.querySelector('.post'));
+});
+});
+countBookmarks();
+loadClass();
+}
+clearBookmarks();
+}
+function showResults(element, title, id, imgStyle, link, category, fullTitle) {
+let item = `<div class="post" data-item="${id}">
+<button aria-label="Clear This Item" class="sp-btn clearItem tooltipped" type="button" data-tooltip="حذف"><i class="fa fa-trash"></i></button>
+<div class="post-image">
+<a href="${link}" title="${fullTitle}" class="image Lazy smimg">
+<img alt="${fullTitle}" data-src="${imgStyle}">
+</a>
+</div>
+<div class="bookmark-details">
+${category ? `<a class="Category cateback-${Math.floor(42 * Math.random() + 1)}" href="/search/label/${encodeURIComponent(category)}?max-results=${getMaxResults}">${category}</a>` : ''}
+<h3 class="post-title"><a title="${fullTitle}" href="${link}">${title}</a></h3>
+</div>
+</div>`;
+if (list[id]) {
+delete list[id];
+pushToStorage(list);
+document.querySelector(`.post[data-item='${id}'] .postSave`).classList.remove("filled");
+document.querySelector("#vBookmarks .bm-posts").querySelector(`.post[data-item='${id}']`).remove();
+} else {
+list[id] = item;
+pushToStorage(list);
+document.querySelector(`.post[data-item='${id}'] .postSave`).classList.add("filled");
+item?document.querySelector("#vBookmarks .bm-posts").innerHTML += item : '';
+clearItem(element.closest('.post'));
+}
+document.addEventListener("click", function(event) {
+const btn = event.target.closest('[data-target="vBookmarks"]');
+if (!btn) return;
+LazyImages('data-src');
+});
+countBookmarks();
+clearBookmarks();
+}
+loadExisting();
+document.addEventListener("click", function(event) {
+const btn = event.target.closest(".postSave");
+if (!btn) return;
+const post = btn.closest(".post");
+if (!post) return;
+const title = post.querySelector(".post-title a").textContent,
+fullTitle = post.querySelector(".post-title a").getAttribute('title'),
+id = post.dataset.item,
+imgStyle = post.querySelector(".post-image img").getAttribute('src'),
+link = post.querySelector(".post-image a.image").href,
+category = post.dataset.cate ? post.dataset.cate : false;
+showResults(btn, title, id, imgStyle, link, category,fullTitle);
+});
+
 
 })();
