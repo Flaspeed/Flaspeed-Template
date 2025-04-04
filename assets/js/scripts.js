@@ -384,7 +384,6 @@ parentElement.classList.add("post-from-tag");
 }
 element.parentElement.innerHTML = GetHtml(data, element);
 LazyImages("data-src");
-loadClass();
 
 const megaMenus = document.querySelectorAll(".MegaMenu");
 for (let j = 0, len2 = megaMenus.length; j < len2; j++) {
@@ -412,7 +411,6 @@ posts[m].querySelector(".fa-video").style.transform = "scale(0)";
 }
 },
 function (){
-console.log(element.parentElement);
 element.parentElement.innerHTML = Error[0];
 }
 );
