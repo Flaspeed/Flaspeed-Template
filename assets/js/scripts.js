@@ -368,7 +368,7 @@ if (window.pageYOffset + window.innerHeight > elementTop && !element.classList.c
 element.classList.add("loadclass");
 const parentElement = element.parentElement.parentElement,
 loaderElement = parentElement.classList.contains("MegaMenu")? parentElement.querySelector(".widget-content") : null;
-
+//s
 fetchData(
 url,
 function () {
