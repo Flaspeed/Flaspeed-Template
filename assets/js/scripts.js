@@ -412,6 +412,7 @@ posts[m].querySelector(".fa-video").style.transform = "scale(0)";
 }
 },
 function (){
+console.log(element.parentElement);
 element.parentElement.innerHTML = Error[0];
 }
 );
