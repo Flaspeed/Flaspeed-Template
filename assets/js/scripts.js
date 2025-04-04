@@ -337,6 +337,7 @@ KF(Km * Kf / 100 + KN);
 -->> loadPostsOnView()
 ==============================================================*/
 function loadPostsOnView(event) {
+if(document.querySelectorAll(".posts-from")){
 const elements = document.querySelectorAll(".posts-from");
 for (let i = 0, len = elements.length; i < len; i++) {
 const element = elements[i],
@@ -417,6 +418,7 @@ element.parentElement.innerHTML = Error[0];
 }
 if (event && event.type === "scroll" && !element.classList.contains("loadclass")) {
 element.classList.add("loadclass");
+}
 }
 }
 }
