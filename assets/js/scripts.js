@@ -337,7 +337,7 @@ KF(Km * Kf / 100 + KN);
 -->> loadPostsOnView()
 ==============================================================*/
 function loadPostsOnView(event) {
-if(document.querySelectorAll(".posts-from")){
+if(document.querySelector(".posts-from")){
 const elements = document.querySelectorAll(".posts-from");
 for (let i = 0, len = elements.length; i < len; i++) {
 const element = elements[i],
