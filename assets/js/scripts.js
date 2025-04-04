@@ -566,8 +566,8 @@ const btn = event.target.closest('[data-target="vBookmarks"]');
 if (!btn) return;
 if (!wrapperPosts.innerHTML.includes(key) && list[key]) {
 wrapperPosts.innerHTML += list[key];
-}
 LazyImages('data-src');
+}
 clearItem(wrapperPosts.querySelector('.post'));
 });
 });
