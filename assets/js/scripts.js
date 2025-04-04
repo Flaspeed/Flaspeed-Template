@@ -366,45 +366,57 @@ moreLink = `${BlogUrl}search/label/${encodeURIComponent(label)}`;
 if (window.pageYOffset + window.innerHeight > elementTop && !element.classList.contains("loadclass")) {
 element.classList.add("loadclass");
 const parentElement = element.parentElement.parentElement,
-loaderElement = parentElement.classList.contains("MegaMenu") && (parentElement.querySelector('.widget-content'));
-fetchData(url,
-() => !loaderElement.querySelector('.LoaderCall') ? loaderElement.insertAdjacentHTML("beforeend", '<i class="LoaderCall"></i>') : '',
-(data) => {
-if (parentElement.querySelector(".headline .MoreBtn")) {
-parentElement.querySelector('.headline .MoreBtn').href = moreLink;
+loaderElement = parentElement.classList.contains("MegaMenu")? parentElement.querySelector(".widget-content") : null;
+
+fetchData(
+url,
+function () {
+if (loaderElement && !loaderElement.querySelector(".LoaderCall")) {
+loaderElement.insertAdjacentHTML("beforeend", '<i class="LoaderCall"></i>');
+}
+},
+function (data) {
+const headlineMoreBtn = parentElement.querySelector(".headline .MoreBtn");
+if (headlineMoreBtn) {
+headlineMoreBtn.href = moreLink;
 parentElement.classList.add("post-from-tag");
 }
 element.parentElement.innerHTML = GetHtml(data, element);
-LazyImages('data-src');
+LazyImages("data-src");
 loadClass();
 
+const megaMenus = document.querySelectorAll(".MegaMenu");
+for (let j = 0, len2 = megaMenus.length; j < len2; j++) {
+const megaMenu = megaMenus[j],
+posts = megaMenu.querySelectorAll(".mega-3 .post");
 
-
-document.querySelectorAll(".MegaMenu").forEach(menu => {
-document.querySelectorAll(".mega-3 .post").forEach(item => {
-CanvasFun(item);
-item.querySelector('.fa-video').style.transform  = 'scale(1)';
-});
-});
-document.querySelectorAll(".MegaMenu").forEach(menu => {
-document.querySelectorAll(".mega-3 .post").forEach(item => {
-menu.addEventListener("mouseenter", event => {
-CanvasFun(item);
-item.querySelector('.fa-video').style.transform  = 'scale(1)';
-});
-menu.addEventListener("mouseleave", event => {
-item.querySelector('.fa-video').style.transform  = 'scale(0)';
-});
-});
-});
-
-},
-(error) => element.parentElement.innerHTML = Error[0]
-);
+for (let k = 0, len3 = posts.length; k < len3; k++) {
+const post = posts[k];
+CanvasFun(post);
+post.querySelector(".fa-video").style.transform = "scale(1)";
 }
 
+megaMenu.addEventListener("mouseenter", function () {
+for (let l = 0; l < posts.length; l++) {
+CanvasFun(posts[l]);
+posts[l].querySelector(".fa-video").style.transform = "scale(1)";
+}
+});
 
-
+megaMenu.addEventListener("mouseleave", function () {
+for (let m = 0; m < posts.length; m++) {
+posts[m].querySelector(".fa-video").style.transform = "scale(0)";
+}
+});
+}
+},
+function (){
+console.log(element.parentElement.innerHTML);
+console.log(Error[0]);
+element.parentElement.innerHTML = Error[0];
+}
+);
+}
 if (event && event.type === "scroll" && !element.classList.contains("loadclass")) {
 element.classList.add("loadclass");
 }
