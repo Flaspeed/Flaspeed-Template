@@ -32,7 +32,8 @@ if (!(event.target instanceof Element)) return;
 const el = event.target.closest(".dropdown-button");
 if (!el) return;
 if(!el.hasAttribute("data-initialized")){
-el.dropdown();
+const spAlignment = el.dataset.target === 'vBookmarks' ? {alignment:'left'} : '';
+el.dropdown(spAlignment);
 el.setAttribute("data-initialized", "true");
 el.dropdown("open");
 }
