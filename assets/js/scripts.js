@@ -525,7 +525,9 @@ const bmCount = document.getElementById("bookmark-count"),
 count = Object.keys(list).length;
 if (count > 0) {
 bmCount.parentElement.classList.add('an-extra');
-bmCount.nextElementSibling.innerHTML = '<i class="fa fa-bookmark"></i>';
+const icon = document.createElement('i');
+icon.className = 'fa fa-bookmark';
+bmCount.nextElementSibling.replaceWith(icon);
 if (count < 10) {
 bmCount.textContent = count;
 } else {
@@ -533,7 +535,9 @@ bmCount.textContent = '+9';
 }
 } else {
 bmCount.parentElement.classList.remove('an-extra');
-bmCount.nextElementSibling.innerHTML = '<i class="fa fa-bookmark-slash"></i>';
+const icon = document.createElement('i');
+icon.className = 'fa fa-bookmark-slash';
+bmCount.nextElementSibling.replaceWith(icon);
 bmCount.textContent = '0';
 }
 }
