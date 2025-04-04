@@ -238,7 +238,216 @@ return JR;
 }; // End Elements Feed
 
 
+/*============================================================
+-->> GetHtml()
+==============================================================*/
+function GetHtml(data,element){
+const mega = element.getAttribute("data-type").includes("mega"),
+megatwo = element.getAttribute("data-type") === 'mega-2',
+megathree = element.getAttribute("data-type") === 'mega-3',
+sided = element.getAttribute("data-type").includes("sided"),
+cover = element.getAttribute("data-type").includes("cover"),
+semicov = element.getAttribute("data-type").includes("semicov"),
+video = element.getAttribute("data-type").includes("video"),
+small = element.getAttribute("data-type").includes("small"),
+noimage = element.getAttribute("data-type").includes("noimage"),
+slider = element.getAttribute("data-type").includes("slider"),
+carousel = element.getAttribute("data-type").includes("carousel"),
+timeline = element.getAttribute("data-type").includes("timeline"),
+grid = element.getAttribute("data-type").includes("grid");
+
+let htmlContent = '';
+htmlContent += '<section class="cates '+element.getAttribute("data-type")+'">';
+for (let i = 0; i < 24; i++) {
+const entry = data.feed.entry[i];
+if (i === data.feed.entry.length) break;
+let D1 = elemFeed(entry);
+
+function det(){
+let htmlDet = '';
+htmlDet += '<div class="details">',
+htmlDet += !mega ? D1.AuthTagNameElem : '',
+htmlDet += D1.LinkDate,
+htmlDet += D1.NumComUrl;
+return htmlDet + '</div>';
+}
+htmlContent += '<article class="post post-'+i+' an-up" data-item="'+D1.PostId+'" data-cate="'+D1.Category+'">';
+if(mega){
+htmlContent += '<div class="post-image">',
+htmlContent += '<a title="'+D1.FullTitle+'" class="image Lazy" href="'+D1.Link+'">',
+htmlContent += !megatwo ? D1.CategoryName : '',
+htmlContent += megathree ? '<canvas id="bar" width="50" height="50"></canvas>' : '',
+htmlContent += megathree ? '<i class="fa fa-video"></i>' : '',
+htmlContent += '<img alt="'+D1.FullTitle+'" data-src="'+D1.ImgUrl+'"/>',
+htmlContent += '</a>',
+htmlContent += '<button aria-label="Read it Later" class="tooltipped postSave" data-tooltip="اقرأها لاحقاً" type="button" aria-pressed="false">',
+htmlContent += '<svg fill="none" height="16" stroke="var(--key)" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewBox="0 0 24 24" width="16"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>',
+htmlContent += '</button>',              
+htmlContent += '</div>';
+if(megatwo){
+htmlContent += '<div class="mginfo-wrap">';
+}
+htmlContent += det();
+htmlContent += '<h3 class="post-title"><a title="'+D1.FullTitle+'" href="'+D1.Link+'">'+D1.Title+'</a></h3>';
+if(megatwo){
+htmlContent += '</div>';
+}
+}
+
+htmlContent += '</article>';
+
+}
+
+return htmlContent + "</section>"
+}
+
+/*============================================================
+-->> Canvas()
+==============================================================*/
+function CanvasFun(KR) {
+var Kj = KR.getElementsByTagName("canvas")[0],
+Kz = Kj.width,
+Kc = Kj.height,
+Kv = Kj.getContext('2d');
+Kv.lineWidth = 4;
+Kv.strokeStyle = '#fff',
+Kv.shadowBlur = 1;
+Kv.shadowColor = "rgba(0,0,0,0.3)";
+var Ks = Kz / 2,
+Kb = Kc / 2,
+KS = 20,
+Km = 25,
+KN = 0,
+KG = 100,
+Kf = 0;
+(function KF(KV) {
+Kv.clearRect(0, 0, Kz, Kc);
+Kv.beginPath(),
+Kv.arc(Ks, Kb, KS, KN, KV, false),
+Kv.stroke(),
+Kf++,
+Kf < KG + 1 && requestAnimationFrame(function() {
+KF(Km * Kf / 100 + KN);
+});
+}());
+}
 
 
+/*============================================================
+-->> loadPostsOnView()
+==============================================================*/
+function loadPostsOnView(event) {
+const elements = document.querySelectorAll(".posts-from");
+for (let i = 0, len = elements.length; i < len; i++) {
+const element = elements[i],
+label = element.getAttribute("data-label"),
+number = element.getAttribute("data-number"),
+index = element.getAttribute("data-index"),
+elementTop = element.getBoundingClientRect().top - document.body.getBoundingClientRect().top;
+let url, moreLink;
+if (label === "lastPost") {
+url = `${BlogUrl}feeds/posts/summary/?alt=json&start-index=${index}&max-results=${number}`;
+moreLink = SearchUrl;
+} else if (label === "randomPost") {
+const randomIndex = Math.floor(PostCount / 2),
+startIndex = Math.abs(Math.floor(Math.random() * randomIndex + 1));
+url = `${BlogUrl}/feeds/posts/summary/?alt=json&start-index=${startIndex}&max-results=${number}`;
+moreLink = SearchUrl;
+} else if (label === "randomPostLabel") {
+const labelName = element.getAttribute("data-label-name"),
+randomIndex = Math.floor(Q[labelName] - number),
+startIndex = Math.abs(Math.floor(Math.random() * randomIndex + 1));
+url = `${BlogUrl}feeds/posts/summary/-/${encodeURIComponent(labelName)}?alt=json&start-index=${startIndex}&max-results=${number}`;
+} else {
+url = `${BlogUrl}feeds/posts/summary/-/${encodeURIComponent(label)}?alt=json&start-index=${index}&max-results=${number}`;
+moreLink = `${BlogUrl}search/label/${encodeURIComponent(label)}`;
+}
+if (window.pageYOffset + window.innerHeight > elementTop && !element.classList.contains("loadclass")) {
+element.classList.add("loadclass");
+const parentElement = element.parentElement.parentElement,
+loaderElement = parentElement.classList.contains("MegaMenu")? parentElement.querySelector(".widget-content") : null;
+
+fetchData(
+url,
+function () {
+if (loaderElement && !loaderElement.querySelector(".LoaderCall")) {
+loaderElement.insertAdjacentHTML("beforeend", '<i class="LoaderCall"></i>');
+}
+},
+function (data) {
+const headlineMoreBtn = parentElement.querySelector(".headline .MoreBtn");
+if (headlineMoreBtn) {
+headlineMoreBtn.href = moreLink;
+parentElement.classList.add("post-from-tag");
+}
+element.parentElement.innerHTML = GetHtml(data, element);
+LazyImages("data-src");
+loadClass();
+
+const megaMenus = document.querySelectorAll(".MegaMenu");
+for (let j = 0, len2 = megaMenus.length; j < len2; j++) {
+const megaMenu = megaMenus[j],
+posts = megaMenu.querySelectorAll(".mega-3 .post");
+
+for (let k = 0, len3 = posts.length; k < len3; k++) {
+const post = posts[k];
+CanvasFun(post);
+post.querySelector(".fa-video").style.transform = "scale(1)";
+}
+
+megaMenu.addEventListener("mouseenter", function () {
+for (let l = 0; l < posts.length; l++) {
+CanvasFun(posts[l]);
+posts[l].querySelector(".fa-video").style.transform = "scale(1)";
+}
+});
+
+megaMenu.addEventListener("mouseleave", function () {
+for (let m = 0; m < posts.length; m++) {
+posts[m].querySelector(".fa-video").style.transform = "scale(0)";
+}
+});
+}
+},
+function () {
+element.parentElement.innerHTML = Error[0];
+}
+);
+}
+if (event && event.type === "scroll" && !element.classList.contains("loadclass")) {
+element.classList.add("loadclass");
+}
+}
+}
+
+
+/*============================================================
+-->> MegaMenu()
+==============================================================*/
+if (window.innerWidth > 992 && document.querySelector('#menu-bar .MegaMenu')) {
+var megaMenus = document.querySelectorAll(".MegaMenu");
+for (var i = 0, len = megaMenus.length; i < len; i++) {
+(function(item) {
+item.addEventListener("mouseenter", function(event) {
+var megaContent = item.querySelector(".mega-content");
+if (megaContent) {
+var link = item.querySelector('a');
+if (link.dataset.info) {
+try {
+var megaData = JSON.parse(link.dataset.info);
+link.href = SearchUrl + '/label/' + encodeURIComponent(megaData.mglabel) + '?max-results=' + getMaxResults;
+megaContent.setAttribute('data-label', megaData.mglabel);
+megaContent.setAttribute("data-type", megaData.mgstyle);
+megaContent.classList.add("posts-from");
+} finally {
+loadPostsOnView(event);
+link.removeAttribute('data-info');
+}
+}
+}
+});
+})(megaMenus[i]);
+}
+}
 
 })();
