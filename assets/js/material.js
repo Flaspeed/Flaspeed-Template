@@ -1,12 +1,11 @@
 // Vanilla JS Tooltip Plugin
-
 (function() {
-    // دالة لإنشاء مُعرّف فريد
-    function createUniqueId() {
+    // Utility function to generate unique ID
+    function generateGUID() {
         return 'flaspeedtooltip-' + Math.random().toString(16).slice(2, 14);
     }
 
-    // دالة لضبط موضع tooltip والعناصر المرافقة له
+    // Utility function to adjust tooltip position
     function adjustPosition(targetEl, tooltipEl, backdropEl, position) {
         const targetRect = targetEl.getBoundingClientRect();
         const tooltipRect = tooltipEl.getBoundingClientRect();
@@ -51,7 +50,7 @@
             case 'right':
                 top = targetRect.top + scrollTop + targetRect.height / 2 - tooltipRect.height / 2;
                 left = targetRect.left + scrollLeft + targetRect.width;
-                translateX = '10px';
+                translateX = '+10px';
                 backdropEl.style.cssText = `
                     top: -7px;
                     left: 0;
@@ -66,7 +65,7 @@
             default: // bottom
                 top = targetRect.top + scrollTop + targetRect.height;
                 left = targetRect.left + scrollLeft + targetRect.width / 2 - tooltipRect.width / 2;
-                translateY = '10px';
+                translateY = '+10px';
                 backdropEl.style.cssText = `
                     top: 0;
                     left: 0;
@@ -74,7 +73,7 @@
                 `;
         }
 
-        // التحقق من حدود الشاشة
+        // Boundary checks
         if (left < 0) left = 4;
         if (left + tooltipRect.width > windowWidth) left -= (left + tooltipRect.width - windowWidth);
         if (top < 0) top = 4;
@@ -85,7 +84,7 @@
         return { left, top, translateX, translateY };
     }
 
-    // تعريف الكلاس الخاص بالtooltip
+    // Tooltip initialization and methods
     function Tooltip(options) {
         this.defaultOptions = {
             delay: 350,
@@ -102,14 +101,14 @@
             if (existingTooltip) existingTooltip.remove();
         }
 
-        const tooltipId = createUniqueId();
+        const tooltipId = generateGUID();
         element.setAttribute('data-tooltip-id', tooltipId);
 
-        // إنشاء عناصر tooltip
+        // Create tooltip elements
         const tooltipEl = document.createElement('div');
         tooltipEl.className = 'material-tooltip';
         tooltipEl.id = tooltipId;
-        tooltipEl.style.margin = '0';
+        tooltipEl.style.margin = '0'; // Remove any default margins
 
         const tooltipContentEl = document.createElement('span');
         const tooltipText = this.getTooltipText(element);
@@ -122,7 +121,7 @@
 
         const backdropEl = document.createElement('div');
         backdropEl.className = 'backdrop';
-        backdropEl.style.margin = '0';
+        backdropEl.style.margin = '0'; // Remove any default margins
 
         tooltipEl.appendChild(tooltipContentEl);
         tooltipEl.appendChild(backdropEl);
@@ -154,17 +153,18 @@
     Tooltip.prototype.attachEvents = function(targetEl, tooltipEl, backdropEl) {
         let hoverTimeout;
         let isVisible = false;
+        let isTouchDevice = false;
 
         const showTooltip = () => {
             const position = this.getPosition(targetEl);
             const { left, top, translateX, translateY } = adjustPosition(targetEl, tooltipEl, backdropEl, position);
 
             tooltipEl.style.visibility = 'visible';
-            tooltipEl.style.left = left + 'px';
-            tooltipEl.style.top = top + 'px';
+            tooltipEl.style.left = `${left}px`;
+            tooltipEl.style.top = `${top}px`;
             backdropEl.style.visibility = 'visible';
 
-            // حسابات التحريك والأنيميشن
+            // Animation calculations
             const tooltipWidth = tooltipEl.offsetWidth;
             const tooltipHeight = tooltipEl.offsetHeight;
             const backdropWidth = backdropEl.offsetWidth;
@@ -174,7 +174,7 @@
             const scaleY = Math.SQRT2 * tooltipHeight / backdropHeight;
             const scale = Math.max(scaleX, scaleY);
 
-            // تطبيق الأنيميشن
+            // Apply animations
             tooltipEl.style.transition = 'transform 0.35s, opacity 0.3s';
             backdropEl.style.transition = 'transform 0.3s, opacity 0.3s';
 
@@ -202,36 +202,41 @@
             }, 225);
         };
 
-        // أحداث الفأرة
-        targetEl.addEventListener('mouseenter', () => {
+        // Mouse events (desktop)
+        targetEl.addEventListener('mouseenter', (e) => {
+            if (isTouchDevice) return; // Skip if it's a touch device
             hoverTimeout = setTimeout(() => {
                 showTooltip();
             }, this.getDelay(targetEl));
         });
 
         targetEl.addEventListener('mouseleave', () => {
+            if (isTouchDevice) return; // Skip if it's a touch device
             clearTimeout(hoverTimeout);
             setTimeout(hideTooltip, 225);
         });
 
-        // أحداث اللمس
+        // Touch events (mobile)
         targetEl.addEventListener('touchstart', (e) => {
-            e.preventDefault(); // منع الأحداث الافتراضية
-            showTooltip();
+            isTouchDevice = true;
+            clearTimeout(hoverTimeout);
+            hoverTimeout = setTimeout(() => {
+                showTooltip();
+            }, this.getDelay(targetEl));
         });
 
-        targetEl.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            hideTooltip();
+        targetEl.addEventListener('touchend', () => {
+            clearTimeout(hoverTimeout);
+            setTimeout(hideTooltip, 225);
         });
 
-        targetEl.addEventListener('touchcancel', (e) => {
-            e.preventDefault();
-            hideTooltip();
+        targetEl.addEventListener('touchcancel', () => {
+            clearTimeout(hoverTimeout);
+            setTimeout(hideTooltip, 225);
         });
     };
 
-    // دالة التصدير العامة لإنشاء tooltip
+    // Expose as global function
     window.VanillaTooltip = function(selector, options) {
         if (options === 'remove') {
             const tooltipId = selector.getAttribute('data-tooltip-id');
@@ -240,11 +245,12 @@
                 if (tooltipEl) tooltipEl.remove();
                 selector.removeAttribute('data-tooltip-id');
             }
+
             return;
         }
 
-        const tooltipInstance = new Tooltip(options);
-        tooltipInstance.init(selector);
+        const tooltip = new Tooltip(options);
+        tooltip.init(selector);
 
         return selector;
     };
