@@ -1,257 +1,6 @@
 // Vanilla JS Tooltip Plugin
-(function() {
-    // Utility function to generate unique ID
-    function generateGUID() {
-        return 'flaspeedtooltip-' + Math.random().toString(16).slice(2, 14);
-    }
-    
-    // Utility function to adjust tooltip position
-    function adjustPosition(targetEl, tooltipEl, backdropEl, position) {
-        const targetRect = targetEl.getBoundingClientRect();
-        const tooltipRect = tooltipEl.getBoundingClientRect();
-        const backdropRect = backdropEl.getBoundingClientRect();
-        const windowWidth = window.innerWidth;
-        const windowHeight = window.innerHeight;
-        const scrollTop = window.pageYOffset;
-        const scrollLeft = window.pageXOffset;
-    
-        let left = 0, top = 0;
-        let translateX = '0px', translateY = '0px';
-    
-        switch(position) {
-            case 'top':
-                top = targetRect.top + scrollTop - tooltipRect.height;
-                left = targetRect.left + scrollLeft + targetRect.width / 2 - tooltipRect.width / 2;
-                translateY = '-10px';
-                backdropEl.style.cssText = `
-                    bottom: 0;
-                    left: 0;
-                    border-radius: 14px 14px 0 0;
-                    transform-origin: 50% 100%;
-                    margin-top: ${tooltipRect.height}px;
-                    margin-left: ${tooltipRect.width / 2 - backdropRect.width / 2}px;
-                `;
-                break;
-            case 'left':
-                top = targetRect.top + scrollTop + targetRect.height / 2 - tooltipRect.height / 2;
-                left = targetRect.left + scrollLeft - tooltipRect.width;
-                translateX = '-10px';
-                backdropEl.style.cssText = `
-                    top: -7px;
-                    right: 0;
-                    width: 14px;
-                    height: 14px;
-                    border-radius: 14px 0 0 14px;
-                    transform-origin: 95% 50%;
-                    margin-top: ${tooltipRect.height / 2}px;
-                    margin-left: ${tooltipRect.width}px;
-                `;
-                break;
-            case 'right':
-                top = targetRect.top + scrollTop + targetRect.height / 2 - tooltipRect.height / 2;
-                left = targetRect.left + scrollLeft + targetRect.width;
-                translateX = '+10px';
-                backdropEl.style.cssText = `
-                    top: -7px;
-                    left: 0;
-                    width: 14px;
-                    height: 14px;
-                    border-radius: 0 14px 14px 0;
-                    transform-origin: 5% 50%;
-                    margin-top: ${tooltipRect.height / 2}px;
-                    margin-left: 0px;
-                `;
-                break;
-            default: // bottom
-                top = targetRect.top + scrollTop + targetRect.height;
-                left = targetRect.left + scrollLeft + targetRect.width / 2 - tooltipRect.width / 2;
-                translateY = '+10px';
-                backdropEl.style.cssText = `
-                    top: 0;
-                    left: 0;
-                    margin-left: ${tooltipRect.width / 2 - backdropRect.width / 2}px;
-                `;
-        }
-    
-        // Boundary checks
-        if (left < 0) left = 4;
-        if (left + tooltipRect.width > windowWidth) left -= (left + tooltipRect.width - windowWidth);
-        if (top < 0) top = 4;
-        if (top + tooltipRect.height > windowHeight + scrollTop) {
-            top -= (top + tooltipRect.height - windowHeight);
-        }
-    
-        return { left, top, translateX, translateY };
-    }
-    
-    // Tooltip initialization and methods
-    function Tooltip(options) {
-        this.defaultOptions = {
-            delay: 350,
-            tooltip: '',
-            position: 'bottom',
-            html: false
-        };
-        this.options = Object.assign({}, this.defaultOptions, options);
-    }
-    
-    Tooltip.prototype.init = function(element) {
-        if (element.getAttribute('data-tooltip-id')) {
-            const existingTooltip = document.getElementById(element.getAttribute('data-tooltip-id'));
-            if (existingTooltip) existingTooltip.remove();
-        }
-    
-        const tooltipId = generateGUID();
-        element.setAttribute('data-tooltip-id', tooltipId);
-    
-        // Create tooltip elements
-        const tooltipEl = document.createElement('div');
-        tooltipEl.className = 'material-tooltip';
-        tooltipEl.id = tooltipId;
-        tooltipEl.style.margin = '0'; // Remove any default margins
-    
-        const tooltipContentEl = document.createElement('span');
-        const tooltipText = this.getTooltipText(element);
-    
-        if (this.isHtml(element)) {
-            tooltipContentEl.innerHTML = tooltipText;
-        } else {
-            tooltipContentEl.textContent = tooltipText;
-        }
-    
-        const backdropEl = document.createElement('div');
-        backdropEl.className = 'backdrop';
-        backdropEl.style.margin = '0'; // Remove any default margins
-    
-        tooltipEl.appendChild(tooltipContentEl);
-        tooltipEl.appendChild(backdropEl);
-        document.body.appendChild(tooltipEl);
-    
-        this.attachEvents(element, tooltipEl, backdropEl);
-        return tooltipEl;
-    };
-    
-    Tooltip.prototype.getTooltipText = function(element) {
-        return element.getAttribute('data-tooltip') || 
-               this.options.tooltip || 
-               element.getAttribute('title') || '';
-    };
-    
-    Tooltip.prototype.isHtml = function(element) {
-        return element.getAttribute('data-html') === 'true' || this.options.html;
-    };
-    
-    Tooltip.prototype.getPosition = function(element) {
-        return element.getAttribute('data-position') || this.options.position;
-    };
-    
-    Tooltip.prototype.getDelay = function(element) {
-        const delay = element.getAttribute('data-delay');
-        return delay !== null && delay !== '' ? parseInt(delay) : this.options.delay;
-    };
-    
-    Tooltip.prototype.attachEvents = function(targetEl, tooltipEl, backdropEl) {
-        let hoverTimeout;
-        let touchTimeout;
-        let isVisible = false;
-    
-        const showTooltip = () => {
-            const position = this.getPosition(targetEl);
-            const { left, top, translateX, translateY } = adjustPosition(targetEl, tooltipEl, backdropEl, position);
-    
-            tooltipEl.style.visibility = 'visible';
-            tooltipEl.style.left = `${left}px`;
-            tooltipEl.style.top = `${top}px`;
-            backdropEl.style.visibility = 'visible';
-    
-            // Animation calculations
-            const tooltipWidth = tooltipEl.offsetWidth;
-            const tooltipHeight = tooltipEl.offsetHeight;
-            const backdropWidth = backdropEl.offsetWidth;
-            const backdropHeight = backdropEl.offsetHeight;
-    
-            const scaleX = Math.SQRT2 * tooltipWidth / backdropWidth;
-            const scaleY = Math.SQRT2 * tooltipHeight / backdropHeight;
-            const scale = Math.max(scaleX, scaleY);
-    
-            // Apply animations
-            tooltipEl.style.transition = 'transform 0.35s, opacity 0.3s';
-            backdropEl.style.transition = 'transform 0.3s, opacity 0.3s';
-    
-            tooltipEl.style.transform = `translateY(${translateY}) translateX(${translateX})`;
-            tooltipEl.style.opacity = '1';
-    
-            backdropEl.style.transform = `scale(${scale})`;
-            backdropEl.style.opacity = '1';
-    
-            isVisible = true;
-        };
-    
-        const hideTooltip = () => {
-            tooltipEl.style.transform = 'translateY(0) translateX(0)';
-            tooltipEl.style.opacity = '0';
-            backdropEl.style.transform = 'scale(1)';
-            backdropEl.style.opacity = '0';
-    
-            setTimeout(() => {
-                if (!isVisible) {
-                    tooltipEl.style.visibility = 'hidden';
-                    backdropEl.style.visibility = 'hidden';
-                }
-                isVisible = false;
-            }, 225);
-        };
-    
-        // Mouse events (existing)
-        targetEl.addEventListener('mouseenter', (e) => {
-            hoverTimeout = setTimeout(() => {
-                showTooltip();
-            }, this.getDelay(targetEl));
-        });
-    
-        targetEl.addEventListener('mouseleave', () => {
-            clearTimeout(hoverTimeout);
-            setTimeout(hideTooltip, 225);
-        });
-    
-        // Touch events (new)
-        targetEl.addEventListener('touchstart', (e) => {
-            clearTimeout(touchTimeout);
-            touchTimeout = setTimeout(() => {
-                showTooltip();
-            }, this.getDelay(targetEl));
-        });
-    
-        targetEl.addEventListener('touchend', () => {
-            clearTimeout(touchTimeout);
-            setTimeout(hideTooltip, 225);
-        });
-    
-        targetEl.addEventListener('touchcancel', () => {
-            clearTimeout(touchTimeout);
-            setTimeout(hideTooltip, 225);
-        });
-    };
-    
-    // Expose as global function
-    window.VanillaTooltip = function(selector, options) {
-        if (options === 'remove') {
-            const tooltipId = selector.getAttribute('data-tooltip-id');
-            if (tooltipId) {
-                const tooltipEl = document.getElementById(tooltipId);
-                if (tooltipEl) tooltipEl.remove();
-                selector.removeAttribute('data-tooltip-id');
-            }
-    
-            return;
-        }
-    
-        const tooltip = new Tooltip(options);
-        tooltip.init(selector);
-    
-        return selector;
-    };
-    })();/*DropMenu*/
+(function(){function generateGUID(){return'flaspeedtooltip-'+Math.random().toString(16).slice(2,14)}function adjustPosition(targetEl,tooltipEl,backdropEl,position){const targetRect=targetEl.getBoundingClientRect();const tooltipRect=tooltipEl.getBoundingClientRect();const backdropRect=backdropEl.getBoundingClientRect();const windowWidth=window.innerWidth;const windowHeight=window.innerHeight;const scrollTop=window.pageYOffset;const scrollLeft=window.pageXOffset;let left=0,top=0;let translateX='0px',translateY='0px';switch(position){case'top':top=targetRect.top+scrollTop-tooltipRect.height;left=targetRect.left+scrollLeft+targetRect.width/2-tooltipRect.width/2;translateY='-10px';backdropEl.style.cssText=`bottom:0;left:0;border-radius:14px 14px 0 0;transform-origin:50% 100%;margin-top:${tooltipRect.height}px;margin-left:${tooltipRect.width/2-backdropRect.width/2}px;`;break;case'left':top=targetRect.top+scrollTop+targetRect.height/2-tooltipRect.height/2;left=targetRect.left+scrollLeft-tooltipRect.width;translateX='-10px';backdropEl.style.cssText=`top:-7px;right:0;width:14px;height:14px;border-radius:14px 0 0 14px;transform-origin:95% 50%;margin-top:${tooltipRect.height/2}px;margin-left:${tooltipRect.width}px;`;break;case'right':top=targetRect.top+scrollTop+targetRect.height/2-tooltipRect.height/2;left=targetRect.left+scrollLeft+targetRect.width;translateX='+10px';backdropEl.style.cssText=`top:-7px;left:0;width:14px;height:14px;border-radius:0 14px 14px 0;transform-origin:5% 50%;margin-top:${tooltipRect.height/2}px;margin-left:0px;`;break;default:top=targetRect.top+scrollTop+targetRect.height;left=targetRect.left+scrollLeft+targetRect.width/2-tooltipRect.width/2;translateY='+10px';backdropEl.style.cssText=`top:0;left:0;margin-left:${tooltipRect.width/2-backdropRect.width/2}px;`;}if(left<0)left=4;if(left+tooltipRect.width>windowWidth)left-=(left+tooltipRect.width-windowWidth);if(top<0)top=4;if(top+tooltipRect.height>windowHeight+scrollTop){top-=(top+tooltipRect.height-windowHeight);}return{left,top,translateX,translateY}}function Tooltip(options){this.defaultOptions={delay:350,tooltip:'',position:'bottom',html:false};this.options=Object.assign({},this.defaultOptions,options)}Tooltip.prototype.init=function(element){if(element.getAttribute('data-tooltip-id')){const existingTooltip=document.getElementById(element.getAttribute('data-tooltip-id'));if(existingTooltip)existingTooltip.remove()}const tooltipId=generateGUID();element.setAttribute('data-tooltip-id',tooltipId);const tooltipEl=document.createElement('div');tooltipEl.className='material-tooltip';tooltipEl.id=tooltipId;tooltipEl.style.margin='0';const tooltipContentEl=document.createElement('span');const tooltipText=this.getTooltipText(element);if(this.isHtml(element)){tooltipContentEl.innerHTML=tooltipText}else{tooltipContentEl.textContent=tooltipText}const backdropEl=document.createElement('div');backdropEl.className='backdrop';backdropEl.style.margin='0';tooltipEl.appendChild(tooltipContentEl);tooltipEl.appendChild(backdropEl);document.body.appendChild(tooltipEl);this.attachEvents(element,tooltipEl,backdropEl);return tooltipEl};Tooltip.prototype.getTooltipText=function(element){return element.getAttribute('data-tooltip')||this.options.tooltip||element.getAttribute('title')||''};Tooltip.prototype.isHtml=function(element){return element.getAttribute('data-html')==='true'||this.options.html};Tooltip.prototype.getPosition=function(element){return element.getAttribute('data-position')||this.options.position};Tooltip.prototype.getDelay=function(element){const delay=element.getAttribute('data-delay');return delay!==null&&delay!==''?parseInt(delay):this.options.delay};Tooltip.prototype.attachEvents=function(targetEl,tooltipEl,backdropEl){let hoverTimeout;let touchTimeout;let isVisible=false;const showTooltip=()=>{const position=this.getPosition(targetEl);const{left,top,translateX,translateY}=adjustPosition(targetEl,tooltipEl,backdropEl,position);tooltipEl.style.visibility='visible';tooltipEl.style.left=`${left}px`;tooltipEl.style.top=`${top}px`;backdropEl.style.visibility='visible';const tooltipWidth=tooltipEl.offsetWidth;const tooltipHeight=tooltipEl.offsetHeight;const backdropWidth=backdropEl.offsetWidth;const backdropHeight=backdropEl.offsetHeight;const scaleX=Math.SQRT2*tooltipWidth/backdropWidth;const scaleY=Math.SQRT2*tooltipHeight/backdropHeight;const scale=Math.max(scaleX,scaleY);tooltipEl.style.transition='transform 0.35s, opacity 0.3s';backdropEl.style.transition='transform 0.3s, opacity 0.3s';tooltipEl.style.transform=`translateY(${translateY}) translateX(${translateX})`;tooltipEl.style.opacity='1';backdropEl.style.transform=`scale(${scale})`;backdropEl.style.opacity='1';isVisible=true};const hideTooltip=()=>{tooltipEl.style.transform='translateY(0) translateX(0)';tooltipEl.style.opacity='0';backdropEl.style.transform='scale(1)';backdropEl.style.opacity='0';setTimeout(()=>{if(!isVisible){tooltipEl.style.visibility='hidden';backdropEl.style.visibility='hidden'}isVisible=false},225)};targetEl.addEventListener('mouseenter',(e)=>{hoverTimeout=setTimeout(()=>{showTooltip()},this.getDelay(targetEl))});targetEl.addEventListener('mouseleave',()=>{clearTimeout(hoverTimeout);setTimeout(hideTooltip,225)});targetEl.addEventListener('touchstart',(e)=>{clearTimeout(touchTimeout);touchTimeout=setTimeout(()=>{showTooltip()},this.getDelay(targetEl))});targetEl.addEventListener('touchend',()=>{clearTimeout(touchTimeout);setTimeout(hideTooltip,225)});targetEl.addEventListener('touchcancel',()=>{clearTimeout(touchTimeout);setTimeout(hideTooltip,225)})};window.VanillaTooltip=function(selector,options){if(options==='remove'){const tooltipId=selector.getAttribute('data-tooltip-id');if(tooltipId){const tooltipEl=document.getElementById(tooltipId);if(tooltipEl)tooltipEl.remove();selector.removeAttribute('data-tooltip-id')}return}const tooltip=new Tooltip(options);tooltip.init(selector);return selector}})();
+/*DropMenu*/
 function materialEnter(t,e,i){t.style.display="block",t.style.opacity="0",t.style.transform="scale(0.8)",t.style.transition=`transform ${e}ms cubic-bezier(0.4, 0.0, 0.2, 1), opacity ${e}ms cubic-bezier(0.4, 0.0, 0.2, 1)`,t.offsetWidth,requestAnimationFrame(()=>{t.style.opacity="1",t.style.transform="scale(1)"}),setTimeout(()=>{t.style.transition="","function"==typeof i&&i()},e+20)}function materialExit(t,e,i){t.style.transition=`transform ${e}ms cubic-bezier(0.4, 0.0, 0.2, 1), opacity ${e}ms cubic-bezier(0.4, 0.0, 0.2, 1)`,t.style.opacity="0",t.style.transform="scale(0.8)",setTimeout(()=>{t.style.display="none",t.style.transition="","function"==typeof i&&i()},e)}function initDropdown(t,e={}){if("open"===e)return t.forEach(t=>{let e=new CustomEvent("open");t.dispatchEvent(e)}),!1;if("close"===e)return t.forEach(t=>{let e=new CustomEvent("close");t.dispatchEvent(e)}),!1;let i={inDuration:100,outDuration:100,constrainWidth:!1,hover:!1,gutter:0,belowOrigin:!0,alignment:"rtl"===BlogDirection?"right":"left",stopPropagation:!1};t.forEach(t=>{let n=Object.assign({},i,e),o=!1,s=t.getAttribute("data-target"),a=document.getElementById(s);function r(){void 0!==t.dataset.induration&&(n.inDuration=parseInt(t.dataset.induration)),void 0!==t.dataset.outduration&&(n.outDuration=parseInt(t.dataset.outduration)),void 0!==t.dataset.constrainwidth&&(n.constrainWidth="true"===t.dataset.constrainwidth),void 0!==t.dataset.hover&&(n.hover="true"===t.dataset.hover),void 0!==t.dataset.gutter&&(n.gutter=parseInt(t.dataset.gutter)),void 0!==t.dataset.beloworigin&&(n.belowOrigin="true"===t.dataset.beloworigin),void 0!==t.dataset.alignment&&(n.alignment=t.dataset.alignment),void 0!==t.dataset.stoppropagation&&(n.stopPropagation="true"===t.dataset.stoppropagation)}function l(e){"focus"===e&&(o=!0),r(),a.classList.add("active"),t.classList.add("active");let i=t.getBoundingClientRect().width;!0===n.constrainWidth&&(a.style.width=i+"px"),a.style.display="block",a.style.visibility="hidden",a.style.opacity="0",a.style.transform="scale(0.8)";let s=window.innerWidth,l=window.innerHeight,d=t.clientHeight,p=t.getBoundingClientRect(),u=a.offsetWidth,g=a.offsetHeight,f=n.alignment;"left"===f?p.left+u>s&&(f="right"):"right"===f&&p.right-u<0&&(f="left");let y=0;!0===n.belowOrigin&&(y=d);let $=0,v=t.parentElement;if(v&&v!==document.body&&v.scrollHeight>v.clientHeight&&($=v.scrollTop),p.top+y+g>l){if(p.top+d-g<0){let h=l-p.top-y;a.style.maxHeight=h+"px"}else y||(y+=d),y-=g}a.style.position="absolute",a.style.top=t.offsetTop+y+$+"px","left"===f?(a.style.left="0px",a.style.right="auto",a.style.transformOrigin="top left"):"right"===f?(a.style.right="0px",a.style.left="auto",a.style.transformOrigin="top right"):a.style.transformOrigin="top",a.style.display="none",a.style.visibility="visible",materialEnter(a,n.inDuration,()=>{a.style.height=""}),setTimeout(()=>{document.addEventListener("click",c)},0)}a&&(a.style.display="none",a.style.opacity="0"),r(),a&&t.nextElementSibling!==a&&t.parentNode.insertBefore(a,t.nextElementSibling);let c=function(t){!(t.target.closest("button.sp-btn")||t.target.closest(".sp-btn"))&&(d(),document.removeEventListener("click",c))};function d(){o=!1,materialExit(a,n.outDuration,()=>{a.classList.remove("active"),t.classList.remove("active"),document.removeEventListener("click",c),a.style.maxHeight=""})}if(n.hover){let p=!1;t.removeEventListener("click",clickHandler),t.addEventListener("mouseenter",t=>{!1===p&&(l(),p=!0)}),t.addEventListener("mouseleave",t=>{let e=t.relatedTarget;e&&a.contains(e)||(d(),p=!1)}),a.addEventListener("mouseleave",e=>{let i=e.relatedTarget;i&&t.contains(i)||(d(),p=!1)})}else{let u=function(e){if(!o){if(t!==e.currentTarget||t.classList.contains("active")||e.target.closest(".dropdown-content")){if(t.classList.contains("active")){if(e.target.closest("button.sp-btn")||e.target.closest(".sp-btn"))return;d(),document.removeEventListener("click",c)}}else e.preventDefault(),n.stopPropagation&&e.stopPropagation(),l("click")}};if(a){let g=a.querySelectorAll("button.sp-btn, .sp-btn");g.forEach(t=>{t.addEventListener("click",t=>{})})}t.removeEventListener("click",u),t.addEventListener("click",u)}t.addEventListener("open",t=>{l(t.detail)}),t.addEventListener("close",d)})}NodeList.prototype.dropdown=function(t){return initDropdown(this,t)},HTMLElement.prototype.dropdown=function(t){return initDropdown([this],t)};
 /*Drawer*/
 (function(){function a(c,d,e,f,g){c.style.transition=`all ${e}ms ${f}`;for(let h in d)c.style[h]=d[h];setTimeout(()=>{c.style.transition="";g&&typeof g=="function"&&g()},e)}const b={menuWidth:300,edge:BlogDirection==='rtl'?'right':'left',closeOnClick:!1,draggable:!0,onOpen:null,onClose:null};function c(d,e){this.elem=d;this.options=Object.assign({},b,e);this.init()}c.prototype.init=function(){const f=this,g=f.elem,h=g.getAttribute("data-activates"),i=document.getElementById(h);if(!i)return;f.options.menuWidth!=300&&(i.style.width=f.options.menuWidth+"px");let j=document.querySelector(`.drag-target[data-sidenav="${h}"]`);if(f.options.draggable){j&&j.parentNode.removeChild(j);j=document.createElement("div");j.className="drag-target";j.setAttribute("data-sidenav",h);document.body.appendChild(j)}else j=null;f.options.edge==="left"?(i.classList.add("left-aligned"),i.style.transform="translateX(-100%)",j&&(j.style.left="0")):(i.classList.add("right-aligned"),i.style.transform="translateX(100%)",j&&(j.style.right="0"));if(i.classList.contains("fixed")&&window.innerWidth>992)i.style.transform="translateX(0)";let k=!1,l=!1;function m(n){k=!1,l=!1;document.body.style.overflow="";document.body.style.width="";const o=document.getElementById("sidenav-overlay");o&&a(o,{opacity:"0"},200,"ease-out",function(){o.parentNode&&o.parentNode.removeChild(o)});if(f.options.edge==="left"){if(j){j.style.width="";j.style.right="";j.style.left="0"}a(i,{transform:"translateX(-100%)"},200,"cubic-bezier(0.25,0.46,0.45,0.94)",function(){n===!0&&(i.removeAttribute("style"),i.style.width=f.options.menuWidth+"px");typeof f.options.onClose==="function"&&f.options.onClose.call(i)})}else{if(j){j.style.width="";j.style.right="0";j.style.left=""}a(i,{transform:"translateX(100%)"},200,"cubic-bezier(0.25,0.46,0.45,0.94)",function(){n===!0&&(i.removeAttribute("style"),i.style.width=f.options.menuWidth+"px");typeof f.options.onClose==="function"&&f.options.onClose.call(i)})}}if(i.classList.contains("fixed"))window.addEventListener("resize",function(){if(window.innerWidth>992){if(document.getElementById("sidenav-overlay")&&l)m(!0);else i.style.transform="translateX(0)"}else if(!l)f.options.edge==="left"?i.style.transform="translateX(-100%)":i.style.transform="translateX(100%)"});f.options.closeOnClick===!0&&i.addEventListener("click",function(n){let o=n.target;if(o.tagName.toLowerCase()==="a"&&!o.classList.contains("collapsible-header")){if(!(window.innerWidth>992&&i.classList.contains("fixed")))m()}});if(f.options.draggable&&j){j.addEventListener("click",function(){l&&m()});let n=0,o=0,p=!1;j.addEventListener("touchstart",function(q){q.touches.length===1&&(p=!0,n=q.touches[0].clientX)});j.addEventListener("touchmove",function(q){if(!p)return;o=q.touches[0].clientX;const r=o-n; if(o===0&&q.touches[0].clientY===0)return;const s=document.body.clientWidth;document.body.style.overflow="hidden";document.body.style.width=s+"px";let t=document.getElementById("sidenav-overlay");if(!t){t=document.createElement("div");t.id="sidenav-overlay";t.style.opacity="0";t.addEventListener("click",function(){m()});document.body.appendChild(t);typeof f.options.onOpen==="function"&&f.options.onOpen.call(i)};if(f.options.edge==="left"){let u=r;u=u>f.options.menuWidth?f.options.menuWidth:u<0?0:u;l=u>=f.options.menuWidth/2;i.style.transform=`translateX(${u-f.options.menuWidth}px)`;t.style.opacity=u/f.options.menuWidth}else{let u=o;u=u>window.innerWidth?window.innerWidth:u;u=u<window.innerWidth-f.options.menuWidth?window.innerWidth-f.options.menuWidth:u;l=u<window.innerWidth-f.options.menuWidth/2;let v=u-f.options.menuWidth/2;v=v<0?0:v;i.style.transform=`translateX(${v}px)`;t.style.opacity=Math.abs((u-window.innerWidth)/f.options.menuWidth)}});j.addEventListener("touchend",function(q){if(!p)return;p=!1;const r=document.getElementById("sidenav-overlay"),s=0,u=o,v=u-f.options.menuWidth,w=u-f.options.menuWidth/2;v=v>0?0:v;w=w<0?0:w;if(f.options.edge==="left"){if((l&&s<=0.3)||s<-0.5){v!==0&&a(i,{transform:"translateX(0)"},300,"ease-out");r&&a(r,{opacity:"1"},50,"ease-out");j&&(j.style.width="50%",j.style.right="0",j.style.left="");l=!0}else{document.body.style.overflow="";document.body.style.width="";a(i,{transform:"translateX(-100%)"},200,"ease-out",function(){typeof f.options.onClose==="function"&&f.options.onClose.call(i)});r&&a(r,{opacity:"0"},200,"ease-out",function(){r.parentNode&&r.parentNode.removeChild(r)});j&&(j.style.width="10px",j.style.right="",j.style.left="0");l=!1}}else{if((l&&s>=-0.3)||s>0.5){w!==0&&a(i,{transform:"translateX(0)"},300,"ease-out");r&&a(r,{opacity:"1"},50,"ease-out");j&&(j.style.width="50%",j.style.right="",j.style.left="0");l=!0}else{document.body.style.overflow="";document.body.style.width="";a(i,{transform:"translateX(100%)"},200,"ease-out",function(){typeof f.options.onClose==="function"&&f.options.onClose.call(i)});r&&a(r,{opacity:"0"},200,"ease-out",function(){r.parentNode&&r.parentNode.removeChild(r)});j&&(j.style.width="10px",j.style.right="0",j.style.left="");l=!1}}});}g.addEventListener("click",function(q){q.preventDefault();if(l){l=!1;k=!1;m()}else{const n=document.body.clientWidth;document.body.style.overflow="hidden";document.body.style.width=n+"px";f.options.draggable&&j&&document.body.appendChild(j);const p=document.createElement("div");p.id="sidenav-overlay";p.style.opacity="0";p.addEventListener("click",function(){l=!1;k=!1;m();a(p,{opacity:"0"},300,"ease-out",function(){p.parentNode&&p.parentNode.removeChild(p)})});document.body.appendChild(p);if(f.options.edge==="left"){j&&(j.style.width="50%",j.style.right="0",j.style.left="");a(i,{transform:"translateX(0)"},300,"ease-out")}else{j&&(j.style.width="50%",j.style.right="",j.style.left="0");a(i,{transform:"translateX(0)"},300,"ease-out")}a(p,{opacity:"1"},300,"ease-out",function(){l=!0;k=!1});typeof f.options.onOpen==="function"&&f.options.onOpen.call(i)}})};c.prototype.destroy=function(){const d=this.elem.getAttribute("data-activates"),e=document.getElementById("sidenav-overlay"),f=document.querySelector(`.drag-target[data-sidenav="${d}"]`);e&&e.click();f&&f.parentNode&&f.parentNode.removeChild(f)};c.prototype.show=function(){this.elem.click()};c.prototype.hide=function(){const d=document.getElementById("sidenav-overlay");d&&d.click()};window.SideNav=c})();
@@ -262,20 +11,7 @@ if(WavesAllow){!function(n){var t=t||{},e=document.querySelectorAll.bind(documen
 ==============================================================*/
 if(Tooltips){tooltip()};
 function tooltip(){
-if (isTouchOnlyDevice) {
-document.addEventListener("pointerdown", function (event) { 
-if (!(event.target instanceof Element)) return;
-const btn = event.target.closest(".tooltipped");
-if (!btn) return;
-if (!window._vanillaTooltips) {
-window._vanillaTooltips = new Map();
-}
-const tooltipId = btn.dataset.tooltipId || btn.getAttribute("id") || Math.random().toString(36).slice(2, 11);
-if (!window._vanillaTooltips.has(tooltipId)) {
-window._vanillaTooltips.set(tooltipId, new VanillaTooltip(btn,{delay: 50}));
-}
-}, true);
-} else {
+if(isMobileTooltip && isTouchOnlyDevice){
 const elements = document.querySelectorAll('.tooltipped');
 if (elements.length) {
 for (let i = 0; i < elements.length; i++) {
@@ -290,6 +26,19 @@ if (el.hasAttribute(attr)) el.removeAttribute(attr);
 el.classList.remove('tooltipped');
 }
 }
+} else {
+document.addEventListener("pointerdown", function (event) { 
+if (!(event.target instanceof Element)) return;
+const btn = event.target.closest(".tooltipped");
+if (!btn) return;
+if (!window._vanillaTooltips) {
+window._vanillaTooltips = new Map();
+}
+const tooltipId = btn.dataset.tooltipId || btn.getAttribute("id") || Math.random().toString(36).slice(2, 11);
+if (!window._vanillaTooltips.has(tooltipId)) {
+window._vanillaTooltips.set(tooltipId, new VanillaTooltip(btn,{delay: 50}));
+}
+}, true);
 }
 }
 /*============================================================
