@@ -1,5 +1,260 @@
 // Vanilla JS Tooltip Plugin
-(function(){function e(){return'flaspeedTooltip-'+Math.random().toString(16).slice(2, 14)}function t(e,t,o,l){const n=e.getBoundingClientRect(),i=t.getBoundingClientRect(),s=o.getBoundingClientRect(),r=window.innerWidth,a=window.innerHeight,c=window.pageYOffset,d=window.pageXOffset;let p=0,u=0,m='0px',h='0px';switch(l){case'top':u=n.top+c-i.height,p=n.left+d+n.width/2-i.width/2,h='-10px',o.style.cssText=`bottom:0;left:0;border-radius:14px 14px 0 0;transform-origin:50% 100%;margin-top:${i.height}px;margin-left:${i.width/2-s.width/2}px`;break;case'left':u=n.top+c+n.height/2-i.height/2,p=n.left+d-i.width,m='-10px',o.style.cssText=`top:-7px;right:0;width:14px;height:14px;border-radius:14px 0 0 14px;transform-origin:95% 50%;margin-top:${i.height/2}px;margin-left:${i.width}px`;break;case'right':u=n.top+c+n.height/2-i.height/2,p=n.left+d+n.width,m='+10px',o.style.cssText=`top:-7px;left:0;width:14px;height:14px;border-radius:0 14px 14px 0;transform-origin:5% 50%;margin-top:${i.height/2}px;margin-left:0px`;break;default:u=n.top+c+n.height,p=n.left+d+n.width/2-i.width/2,h='+10px',o.style.cssText=`top:0;left:0;margin-left:${i.width/2-s.width/2}px`}return p<0&&(p=4),p+i.width>r&&(p-=p+i.width-r),u<0&&(u=4),u+i.height>a+c&&(u-=u+i.height-a),{left:p,top:u,translateX:m,translateY:h}}function o(e){this.defaultOptions={delay:350,tooltip:'',position:'bottom',html:!1},this.options=Object.assign({},this.defaultOptions,e)}o.prototype.init=function(t){t.getAttribute('data-tooltip-id')&&document.getElementById(t.getAttribute('data-tooltip-id'))&&document.getElementById(t.getAttribute('data-tooltip-id')).remove();const o=e();t.setAttribute('data-tooltip-id',o);const l=document.createElement('div');l.className='material-tooltip',l.id=o,l.style.margin='0';const n=document.createElement('span'),i=this.getTooltipText(t);this.isHtml(t)?n.innerHTML=i:n.textContent=i;const s=document.createElement('div');return s.className='backdrop',s.style.margin='0',l.appendChild(n),l.appendChild(s),document.body.appendChild(l),this.attachEvents(t,l,s),l},o.prototype.getTooltipText=function(e){return e.getAttribute('data-tooltip')||this.options.tooltip||e.getAttribute('title')||''},o.prototype.isHtml=function(e){return'true'===e.getAttribute('data-html')||this.options.html},o.prototype.getPosition=function(e){return e.getAttribute('data-position')||this.options.position},o.prototype.getDelay=function(e){const t=e.getAttribute('data-delay');return null!==t&&''!==t?parseInt(t):this.options.delay},o.prototype.attachEvents=function(e,o,l){let n,i=!1;const s=()=>{const n=this.getPosition(e),{left:s,top:r,translateX:a,translateY:c}=t(e,o,l,n);o.style.visibility='visible',o.style.left=`${s}px`,o.style.top=`${r}px`,l.style.visibility='visible';const d=o.offsetWidth,p=o.offsetHeight,u=l.offsetWidth,m=l.offsetHeight,h=Math.SQRT2*d/u,f=Math.SQRT2*p/m,v=Math.max(h,f);o.style.transition='transform 0.35s, opacity 0.3s',l.style.transition='transform 0.3s, opacity 0.3s',o.style.transform=`translateY(${c}) translateX(${a})`,o.style.opacity='1',l.style.transform=`scale(${v})`,l.style.opacity='1',i=!0},r=()=>{o.style.transform='translateY(0) translateX(0)',o.style.opacity='0',l.style.transform='scale(1)',l.style.opacity='0',setTimeout(()=>{i||(o.style.visibility='hidden',l.style.visibility='hidden'),i=!1},225)};e.addEventListener('mouseenter',()=>{n=setTimeout(s,this.getDelay(e))}),e.addEventListener('mouseleave',()=>{clearTimeout(n),setTimeout(r,225)})},window.VanillaTooltip=function(e,t){if('remove'===t){const t=e.getAttribute('data-tooltip-id');return t&&document.getElementById(t)&&(document.getElementById(t).remove(),e.removeAttribute('data-tooltip-id')),e}const l=new o(t);return l.init(e)}})();
+(function() {
+    // Utility function to generate unique ID
+    function generateGUID() {
+        return 'flaspeedtooltip-' + Math.random().toString(16).slice(2, 14);
+    }
+
+    // Utility function to adjust tooltip position
+    function adjustPosition(targetEl, tooltipEl, backdropEl, position) {
+        const targetRect = targetEl.getBoundingClientRect();
+        const tooltipRect = tooltipEl.getBoundingClientRect();
+        const backdropRect = backdropEl.getBoundingClientRect();
+        const windowWidth = window.innerWidth;
+        const windowHeight = window.innerHeight;
+        const scrollTop = window.pageYOffset;
+        const scrollLeft = window.pageXOffset;
+
+        let left = 0, top = 0;
+        let translateX = '0px', translateY = '0px';
+
+        switch(position) {
+            case 'top':
+                top = targetRect.top + scrollTop - tooltipRect.height;
+                left = targetRect.left + scrollLeft + targetRect.width / 2 - tooltipRect.width / 2;
+                translateY = '-10px';
+                backdropEl.style.cssText = `
+                    bottom: 0;
+                    left: 0;
+                    border-radius: 14px 14px 0 0;
+                    transform-origin: 50% 100%;
+                    margin-top: ${tooltipRect.height}px;
+                    margin-left: ${tooltipRect.width / 2 - backdropRect.width / 2}px;
+                `;
+                break;
+            case 'left':
+                top = targetRect.top + scrollTop + targetRect.height / 2 - tooltipRect.height / 2;
+                left = targetRect.left + scrollLeft - tooltipRect.width;
+                translateX = '-10px';
+                backdropEl.style.cssText = `
+                    top: -7px;
+                    right: 0;
+                    width: 14px;
+                    height: 14px;
+                    border-radius: 14px 0 0 14px;
+                    transform-origin: 95% 50%;
+                    margin-top: ${tooltipRect.height / 2}px;
+                    margin-left: ${tooltipRect.width}px;
+                `;
+                break;
+            case 'right':
+                top = targetRect.top + scrollTop + targetRect.height / 2 - tooltipRect.height / 2;
+                left = targetRect.left + scrollLeft + targetRect.width;
+                translateX = '+10px';
+                backdropEl.style.cssText = `
+                    top: -7px;
+                    left: 0;
+                    width: 14px;
+                    height: 14px;
+                    border-radius: 0 14px 14px 0;
+                    transform-origin: 5% 50%;
+                    margin-top: ${tooltipRect.height / 2}px;
+                    margin-left: 0px;
+                `;
+                break;
+            default: // bottom
+                top = targetRect.top + scrollTop + targetRect.height;
+                left = targetRect.left + scrollLeft + targetRect.width / 2 - tooltipRect.width / 2;
+                translateY = '+10px';
+                backdropEl.style.cssText = `
+                    top: 0;
+                    left: 0;
+                    margin-left: ${tooltipRect.width / 2 - backdropRect.width / 2}px;
+                `;
+        }
+
+        // Boundary checks
+        if (left < 0) left = 4;
+        if (left + tooltipRect.width > windowWidth) left -= (left + tooltipRect.width - windowWidth);
+        if (top < 0) top = 4;
+        if (top + tooltipRect.height > windowHeight + scrollTop) {
+            top -= (top + tooltipRect.height - windowHeight);
+        }
+
+        return { left, top, translateX, translateY };
+    }
+
+    // Tooltip initialization and methods
+    function Tooltip(options) {
+        this.defaultOptions = {
+            delay: 350,
+            tooltip: '',
+            position: 'bottom',
+            html: false
+        };
+        this.options = Object.assign({}, this.defaultOptions, options);
+    }
+
+    Tooltip.prototype.init = function(element) {
+        if (element.getAttribute('data-tooltip-id')) {
+            const existingTooltip = document.getElementById(element.getAttribute('data-tooltip-id'));
+            if (existingTooltip) existingTooltip.remove();
+        }
+
+        const tooltipId = generateGUID();
+        element.setAttribute('data-tooltip-id', tooltipId);
+
+        // Create tooltip elements
+        const tooltipEl = document.createElement('div');
+        tooltipEl.className = 'material-tooltip';
+        tooltipEl.id = tooltipId;
+        tooltipEl.style.margin = '0'; // Remove any default margins
+
+        const tooltipContentEl = document.createElement('span');
+        const tooltipText = this.getTooltipText(element);
+
+        if (this.isHtml(element)) {
+            tooltipContentEl.innerHTML = tooltipText;
+        } else {
+            tooltipContentEl.textContent = tooltipText;
+        }
+
+        const backdropEl = document.createElement('div');
+        backdropEl.className = 'backdrop';
+        backdropEl.style.margin = '0'; // Remove any default margins
+
+        tooltipEl.appendChild(tooltipContentEl);
+        tooltipEl.appendChild(backdropEl);
+        document.body.appendChild(tooltipEl);
+
+        this.attachEvents(element, tooltipEl, backdropEl);
+        return tooltipEl;
+    };
+
+    Tooltip.prototype.getTooltipText = function(element) {
+        return element.getAttribute('data-tooltip') || 
+               this.options.tooltip || 
+               element.getAttribute('title') || '';
+    };
+
+    Tooltip.prototype.isHtml = function(element) {
+        return element.getAttribute('data-html') === 'true' || this.options.html;
+    };
+
+    Tooltip.prototype.getPosition = function(element) {
+        return element.getAttribute('data-position') || this.options.position;
+    };
+
+    Tooltip.prototype.getDelay = function(element) {
+        const delay = element.getAttribute('data-delay');
+        return delay !== null && delay !== '' ? parseInt(delay) : this.options.delay;
+    };
+
+    Tooltip.prototype.attachEvents = function(targetEl, tooltipEl, backdropEl) {
+        let hoverTimeout;
+        let isVisible = false;
+        let isTouchDevice = false;
+
+        const showTooltip = () => {
+            const position = this.getPosition(targetEl);
+            const { left, top, translateX, translateY } = adjustPosition(targetEl, tooltipEl, backdropEl, position);
+
+            tooltipEl.style.visibility = 'visible';
+            tooltipEl.style.left = `${left}px`;
+            tooltipEl.style.top = `${top}px`;
+            backdropEl.style.visibility = 'visible';
+
+            // Animation calculations
+            const tooltipWidth = tooltipEl.offsetWidth;
+            const tooltipHeight = tooltipEl.offsetHeight;
+            const backdropWidth = backdropEl.offsetWidth;
+            const backdropHeight = backdropEl.offsetHeight;
+
+            const scaleX = Math.SQRT2 * tooltipWidth / backdropWidth;
+            const scaleY = Math.SQRT2 * tooltipHeight / backdropHeight;
+            const scale = Math.max(scaleX, scaleY);
+
+            // Apply animations
+            tooltipEl.style.transition = 'transform 0.35s, opacity 0.3s';
+            backdropEl.style.transition = 'transform 0.3s, opacity 0.3s';
+
+            tooltipEl.style.transform = `translateY(${translateY}) translateX(${translateX})`;
+            tooltipEl.style.opacity = '1';
+
+            backdropEl.style.transform = `scale(${scale})`;
+            backdropEl.style.opacity = '1';
+
+            isVisible = true;
+        };
+
+        const hideTooltip = () => {
+            tooltipEl.style.transform = 'translateY(0) translateX(0)';
+            tooltipEl.style.opacity = '0';
+            backdropEl.style.transform = 'scale(1)';
+            backdropEl.style.opacity = '0';
+
+            setTimeout(() => {
+                if (!isVisible) {
+                    tooltipEl.style.visibility = 'hidden';
+                    backdropEl.style.visibility = 'hidden';
+                }
+                isVisible = false;
+            }, 225);
+        };
+
+        // Mouse events (desktop)
+        targetEl.addEventListener('mouseenter', (e) => {
+            if (isTouchDevice) return; // Skip if it's a touch device
+            hoverTimeout = setTimeout(() => {
+                showTooltip();
+            }, this.getDelay(targetEl));
+        });
+
+        targetEl.addEventListener('mouseleave', () => {
+            if (isTouchDevice) return; // Skip if it's a touch device
+            clearTimeout(hoverTimeout);
+            setTimeout(hideTooltip, 225);
+        });
+
+        // Touch events (mobile)
+        targetEl.addEventListener('touchstart', (e) => {
+            isTouchDevice = true;
+            clearTimeout(hoverTimeout);
+            hoverTimeout = setTimeout(() => {
+                showTooltip();
+            }, this.getDelay(targetEl));
+        });
+
+        targetEl.addEventListener('touchend', () => {
+            clearTimeout(hoverTimeout);
+            setTimeout(hideTooltip, 225);
+        });
+
+        targetEl.addEventListener('touchcancel', () => {
+            clearTimeout(hoverTimeout);
+            setTimeout(hideTooltip, 225);
+        });
+    };
+
+    // Expose as global function
+    window.VanillaTooltip = function(selector, options) {
+        if (options === 'remove') {
+            const tooltipId = selector.getAttribute('data-tooltip-id');
+            if (tooltipId) {
+                const tooltipEl = document.getElementById(tooltipId);
+                if (tooltipEl) tooltipEl.remove();
+                selector.removeAttribute('data-tooltip-id');
+            }
+
+            return;
+        }
+
+        const tooltip = new Tooltip(options);
+        tooltip.init(selector);
+
+        return selector;
+    };
+})();
 /*DropMenu*/
 function materialEnter(t,e,i){t.style.display="block",t.style.opacity="0",t.style.transform="scale(0.8)",t.style.transition=`transform ${e}ms cubic-bezier(0.4, 0.0, 0.2, 1), opacity ${e}ms cubic-bezier(0.4, 0.0, 0.2, 1)`,t.offsetWidth,requestAnimationFrame(()=>{t.style.opacity="1",t.style.transform="scale(1)"}),setTimeout(()=>{t.style.transition="","function"==typeof i&&i()},e+20)}function materialExit(t,e,i){t.style.transition=`transform ${e}ms cubic-bezier(0.4, 0.0, 0.2, 1), opacity ${e}ms cubic-bezier(0.4, 0.0, 0.2, 1)`,t.style.opacity="0",t.style.transform="scale(0.8)",setTimeout(()=>{t.style.display="none",t.style.transition="","function"==typeof i&&i()},e)}function initDropdown(t,e={}){if("open"===e)return t.forEach(t=>{let e=new CustomEvent("open");t.dispatchEvent(e)}),!1;if("close"===e)return t.forEach(t=>{let e=new CustomEvent("close");t.dispatchEvent(e)}),!1;let i={inDuration:100,outDuration:100,constrainWidth:!1,hover:!1,gutter:0,belowOrigin:!0,alignment:"rtl"===BlogDirection?"right":"left",stopPropagation:!1};t.forEach(t=>{let n=Object.assign({},i,e),o=!1,s=t.getAttribute("data-target"),a=document.getElementById(s);function r(){void 0!==t.dataset.induration&&(n.inDuration=parseInt(t.dataset.induration)),void 0!==t.dataset.outduration&&(n.outDuration=parseInt(t.dataset.outduration)),void 0!==t.dataset.constrainwidth&&(n.constrainWidth="true"===t.dataset.constrainwidth),void 0!==t.dataset.hover&&(n.hover="true"===t.dataset.hover),void 0!==t.dataset.gutter&&(n.gutter=parseInt(t.dataset.gutter)),void 0!==t.dataset.beloworigin&&(n.belowOrigin="true"===t.dataset.beloworigin),void 0!==t.dataset.alignment&&(n.alignment=t.dataset.alignment),void 0!==t.dataset.stoppropagation&&(n.stopPropagation="true"===t.dataset.stoppropagation)}function l(e){"focus"===e&&(o=!0),r(),a.classList.add("active"),t.classList.add("active");let i=t.getBoundingClientRect().width;!0===n.constrainWidth&&(a.style.width=i+"px"),a.style.display="block",a.style.visibility="hidden",a.style.opacity="0",a.style.transform="scale(0.8)";let s=window.innerWidth,l=window.innerHeight,d=t.clientHeight,p=t.getBoundingClientRect(),u=a.offsetWidth,g=a.offsetHeight,f=n.alignment;"left"===f?p.left+u>s&&(f="right"):"right"===f&&p.right-u<0&&(f="left");let y=0;!0===n.belowOrigin&&(y=d);let $=0,v=t.parentElement;if(v&&v!==document.body&&v.scrollHeight>v.clientHeight&&($=v.scrollTop),p.top+y+g>l){if(p.top+d-g<0){let h=l-p.top-y;a.style.maxHeight=h+"px"}else y||(y+=d),y-=g}a.style.position="absolute",a.style.top=t.offsetTop+y+$+"px","left"===f?(a.style.left="0px",a.style.right="auto",a.style.transformOrigin="top left"):"right"===f?(a.style.right="0px",a.style.left="auto",a.style.transformOrigin="top right"):a.style.transformOrigin="top",a.style.display="none",a.style.visibility="visible",materialEnter(a,n.inDuration,()=>{a.style.height=""}),setTimeout(()=>{document.addEventListener("click",c)},0)}a&&(a.style.display="none",a.style.opacity="0"),r(),a&&t.nextElementSibling!==a&&t.parentNode.insertBefore(a,t.nextElementSibling);let c=function(t){!(t.target.closest("button.sp-btn")||t.target.closest(".sp-btn"))&&(d(),document.removeEventListener("click",c))};function d(){o=!1,materialExit(a,n.outDuration,()=>{a.classList.remove("active"),t.classList.remove("active"),document.removeEventListener("click",c),a.style.maxHeight=""})}if(n.hover){let p=!1;t.removeEventListener("click",clickHandler),t.addEventListener("mouseenter",t=>{!1===p&&(l(),p=!0)}),t.addEventListener("mouseleave",t=>{let e=t.relatedTarget;e&&a.contains(e)||(d(),p=!1)}),a.addEventListener("mouseleave",e=>{let i=e.relatedTarget;i&&t.contains(i)||(d(),p=!1)})}else{let u=function(e){if(!o){if(t!==e.currentTarget||t.classList.contains("active")||e.target.closest(".dropdown-content")){if(t.classList.contains("active")){if(e.target.closest("button.sp-btn")||e.target.closest(".sp-btn"))return;d(),document.removeEventListener("click",c)}}else e.preventDefault(),n.stopPropagation&&e.stopPropagation(),l("click")}};if(a){let g=a.querySelectorAll("button.sp-btn, .sp-btn");g.forEach(t=>{t.addEventListener("click",t=>{})})}t.removeEventListener("click",u),t.addEventListener("click",u)}t.addEventListener("open",t=>{l(t.detail)}),t.addEventListener("close",d)})}NodeList.prototype.dropdown=function(t){return initDropdown(this,t)},HTMLElement.prototype.dropdown=function(t){return initDropdown([this],t)};
 /*Drawer*/
