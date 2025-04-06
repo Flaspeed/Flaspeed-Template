@@ -1,11 +1,11 @@
 // Vanilla JS Tooltip Plugin
 (function() {
-    // دالة لإنشاء مُعرّف فريد
-    function createUniqueId() {
+    // Utility function to generate unique ID
+    function generateGUID() {
         return 'flaspeedtooltip-' + Math.random().toString(16).slice(2, 14);
     }
 
-    // دالة لضبط موضع tooltip والعناصر المرافقة له
+    // Utility function to adjust tooltip position
     function adjustPosition(targetEl, tooltipEl, backdropEl, position) {
         const targetRect = targetEl.getBoundingClientRect();
         const tooltipRect = tooltipEl.getBoundingClientRect();
@@ -50,7 +50,7 @@
             case 'right':
                 top = targetRect.top + scrollTop + targetRect.height / 2 - tooltipRect.height / 2;
                 left = targetRect.left + scrollLeft + targetRect.width;
-                translateX = '10px';
+                translateX = '+10px';
                 backdropEl.style.cssText = `
                     top: -7px;
                     left: 0;
@@ -65,7 +65,7 @@
             default: // bottom
                 top = targetRect.top + scrollTop + targetRect.height;
                 left = targetRect.left + scrollLeft + targetRect.width / 2 - tooltipRect.width / 2;
-                translateY = '10px';
+                translateY = '+10px';
                 backdropEl.style.cssText = `
                     top: 0;
                     left: 0;
@@ -73,7 +73,7 @@
                 `;
         }
 
-        // التحقق من حدود الشاشة
+        // Boundary checks
         if (left < 0) left = 4;
         if (left + tooltipRect.width > windowWidth) left -= (left + tooltipRect.width - windowWidth);
         if (top < 0) top = 4;
@@ -84,7 +84,14 @@
         return { left, top, translateX, translateY };
     }
 
-    // تعريف الكلاس الخاص بالtooltip
+    // Check if it's a touch device
+    const isTouchDevice = () => {
+        return ('ontouchstart' in window) || 
+               (navigator.maxTouchPoints > 0) || 
+               (navigator.msMaxTouchPoints > 0);
+    };
+
+    // Tooltip initialization and methods
     function Tooltip(options) {
         this.defaultOptions = {
             delay: 350,
@@ -93,6 +100,7 @@
             html: false
         };
         this.options = Object.assign({}, this.defaultOptions, options);
+        this.isTouch = isTouchDevice();
     }
 
     Tooltip.prototype.init = function(element) {
@@ -101,14 +109,14 @@
             if (existingTooltip) existingTooltip.remove();
         }
 
-        const tooltipId = createUniqueId();
+        const tooltipId = generateGUID();
         element.setAttribute('data-tooltip-id', tooltipId);
 
-        // إنشاء عناصر tooltip
+        // Create tooltip elements
         const tooltipEl = document.createElement('div');
         tooltipEl.className = 'material-tooltip';
         tooltipEl.id = tooltipId;
-        tooltipEl.style.margin = '0';
+        tooltipEl.style.margin = '0'; // Remove any default margins
 
         const tooltipContentEl = document.createElement('span');
         const tooltipText = this.getTooltipText(element);
@@ -121,7 +129,7 @@
 
         const backdropEl = document.createElement('div');
         backdropEl.className = 'backdrop';
-        backdropEl.style.margin = '0';
+        backdropEl.style.margin = '0'; // Remove any default margins
 
         tooltipEl.appendChild(tooltipContentEl);
         tooltipEl.appendChild(backdropEl);
@@ -153,18 +161,18 @@
     Tooltip.prototype.attachEvents = function(targetEl, tooltipEl, backdropEl) {
         let hoverTimeout;
         let isVisible = false;
-        const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+        const isTouch = this.isTouch;
 
         const showTooltip = () => {
             const position = this.getPosition(targetEl);
             const { left, top, translateX, translateY } = adjustPosition(targetEl, tooltipEl, backdropEl, position);
 
             tooltipEl.style.visibility = 'visible';
-            tooltipEl.style.left = left + 'px';
-            tooltipEl.style.top = top + 'px';
+            tooltipEl.style.left = `${left}px`;
+            tooltipEl.style.top = `${top}px`;
             backdropEl.style.visibility = 'visible';
 
-            // حسابات التحريك والأنيميشن
+            // Animation calculations
             const tooltipWidth = tooltipEl.offsetWidth;
             const tooltipHeight = tooltipEl.offsetHeight;
             const backdropWidth = backdropEl.offsetWidth;
@@ -174,7 +182,7 @@
             const scaleY = Math.SQRT2 * tooltipHeight / backdropHeight;
             const scale = Math.max(scaleX, scaleY);
 
-            // تطبيق الأنيميشن
+            // Apply animations
             tooltipEl.style.transition = 'transform 0.35s, opacity 0.3s';
             backdropEl.style.transition = 'transform 0.3s, opacity 0.3s';
 
@@ -202,9 +210,9 @@
             }, 225);
         };
 
-        // إذا كان الجهاز لا يدعم اللمس، نستخدم أحداث الماوس
-        if (!isTouchDevice) {
-            targetEl.addEventListener('mouseenter', () => {
+        // Mouse events for non-touch devices
+        if (!isTouch) {
+            targetEl.addEventListener('mouseenter', (e) => {
                 hoverTimeout = setTimeout(() => {
                     showTooltip();
                 }, this.getDelay(targetEl));
@@ -214,26 +222,39 @@
                 clearTimeout(hoverTimeout);
                 setTimeout(hideTooltip, 225);
             });
-        } else {
-            // على أجهزة اللمس، نستخدم أحداث اللمس فقط
+        }
+        // Touch events 
+        else {
+            // For touch devices, show tooltip immediately on touch with minimal delay
             targetEl.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                showTooltip();
-            });
+                e.preventDefault(); // Prevent default touch behavior
+                clearTimeout(hoverTimeout);
+                hoverTimeout = setTimeout(() => {
+                    showTooltip();
+                }, 10); // Use a very small delay for touch
+            }, { passive: false });
 
+            // Hide tooltip when touch ends
             targetEl.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                hideTooltip();
+                clearTimeout(hoverTimeout);
+                setTimeout(hideTooltip, 225);
             });
 
-            targetEl.addEventListener('touchcancel', (e) => {
-                e.preventDefault();
-                hideTooltip();
+            targetEl.addEventListener('touchcancel', () => {
+                clearTimeout(hoverTimeout);
+                setTimeout(hideTooltip, 225);
             });
+
+            // Hide tooltip when touching elsewhere on the page
+            document.addEventListener('touchstart', (e) => {
+                if (isVisible && e.target !== targetEl && !tooltipEl.contains(e.target)) {
+                    setTimeout(hideTooltip, 225);
+                }
+            }, { passive: true });
         }
     };
 
-    // دالة التصدير العامة لإنشاء tooltip
+    // Expose as global function
     window.VanillaTooltip = function(selector, options) {
         if (options === 'remove') {
             const tooltipId = selector.getAttribute('data-tooltip-id');
@@ -242,16 +263,16 @@
                 if (tooltipEl) tooltipEl.remove();
                 selector.removeAttribute('data-tooltip-id');
             }
+
             return;
         }
 
-        const tooltipInstance = new Tooltip(options);
-        tooltipInstance.init(selector);
+        const tooltip = new Tooltip(options);
+        tooltip.init(selector);
 
         return selector;
     };
 })();
-
 /*DropMenu*/
 function materialEnter(t,e,i){t.style.display="block",t.style.opacity="0",t.style.transform="scale(0.8)",t.style.transition=`transform ${e}ms cubic-bezier(0.4, 0.0, 0.2, 1), opacity ${e}ms cubic-bezier(0.4, 0.0, 0.2, 1)`,t.offsetWidth,requestAnimationFrame(()=>{t.style.opacity="1",t.style.transform="scale(1)"}),setTimeout(()=>{t.style.transition="","function"==typeof i&&i()},e+20)}function materialExit(t,e,i){t.style.transition=`transform ${e}ms cubic-bezier(0.4, 0.0, 0.2, 1), opacity ${e}ms cubic-bezier(0.4, 0.0, 0.2, 1)`,t.style.opacity="0",t.style.transform="scale(0.8)",setTimeout(()=>{t.style.display="none",t.style.transition="","function"==typeof i&&i()},e)}function initDropdown(t,e={}){if("open"===e)return t.forEach(t=>{let e=new CustomEvent("open");t.dispatchEvent(e)}),!1;if("close"===e)return t.forEach(t=>{let e=new CustomEvent("close");t.dispatchEvent(e)}),!1;let i={inDuration:100,outDuration:100,constrainWidth:!1,hover:!1,gutter:0,belowOrigin:!0,alignment:"rtl"===BlogDirection?"right":"left",stopPropagation:!1};t.forEach(t=>{let n=Object.assign({},i,e),o=!1,s=t.getAttribute("data-target"),a=document.getElementById(s);function r(){void 0!==t.dataset.induration&&(n.inDuration=parseInt(t.dataset.induration)),void 0!==t.dataset.outduration&&(n.outDuration=parseInt(t.dataset.outduration)),void 0!==t.dataset.constrainwidth&&(n.constrainWidth="true"===t.dataset.constrainwidth),void 0!==t.dataset.hover&&(n.hover="true"===t.dataset.hover),void 0!==t.dataset.gutter&&(n.gutter=parseInt(t.dataset.gutter)),void 0!==t.dataset.beloworigin&&(n.belowOrigin="true"===t.dataset.beloworigin),void 0!==t.dataset.alignment&&(n.alignment=t.dataset.alignment),void 0!==t.dataset.stoppropagation&&(n.stopPropagation="true"===t.dataset.stoppropagation)}function l(e){"focus"===e&&(o=!0),r(),a.classList.add("active"),t.classList.add("active");let i=t.getBoundingClientRect().width;!0===n.constrainWidth&&(a.style.width=i+"px"),a.style.display="block",a.style.visibility="hidden",a.style.opacity="0",a.style.transform="scale(0.8)";let s=window.innerWidth,l=window.innerHeight,d=t.clientHeight,p=t.getBoundingClientRect(),u=a.offsetWidth,g=a.offsetHeight,f=n.alignment;"left"===f?p.left+u>s&&(f="right"):"right"===f&&p.right-u<0&&(f="left");let y=0;!0===n.belowOrigin&&(y=d);let $=0,v=t.parentElement;if(v&&v!==document.body&&v.scrollHeight>v.clientHeight&&($=v.scrollTop),p.top+y+g>l){if(p.top+d-g<0){let h=l-p.top-y;a.style.maxHeight=h+"px"}else y||(y+=d),y-=g}a.style.position="absolute",a.style.top=t.offsetTop+y+$+"px","left"===f?(a.style.left="0px",a.style.right="auto",a.style.transformOrigin="top left"):"right"===f?(a.style.right="0px",a.style.left="auto",a.style.transformOrigin="top right"):a.style.transformOrigin="top",a.style.display="none",a.style.visibility="visible",materialEnter(a,n.inDuration,()=>{a.style.height=""}),setTimeout(()=>{document.addEventListener("click",c)},0)}a&&(a.style.display="none",a.style.opacity="0"),r(),a&&t.nextElementSibling!==a&&t.parentNode.insertBefore(a,t.nextElementSibling);let c=function(t){!(t.target.closest("button.sp-btn")||t.target.closest(".sp-btn"))&&(d(),document.removeEventListener("click",c))};function d(){o=!1,materialExit(a,n.outDuration,()=>{a.classList.remove("active"),t.classList.remove("active"),document.removeEventListener("click",c),a.style.maxHeight=""})}if(n.hover){let p=!1;t.removeEventListener("click",clickHandler),t.addEventListener("mouseenter",t=>{!1===p&&(l(),p=!0)}),t.addEventListener("mouseleave",t=>{let e=t.relatedTarget;e&&a.contains(e)||(d(),p=!1)}),a.addEventListener("mouseleave",e=>{let i=e.relatedTarget;i&&t.contains(i)||(d(),p=!1)})}else{let u=function(e){if(!o){if(t!==e.currentTarget||t.classList.contains("active")||e.target.closest(".dropdown-content")){if(t.classList.contains("active")){if(e.target.closest("button.sp-btn")||e.target.closest(".sp-btn"))return;d(),document.removeEventListener("click",c)}}else e.preventDefault(),n.stopPropagation&&e.stopPropagation(),l("click")}};if(a){let g=a.querySelectorAll("button.sp-btn, .sp-btn");g.forEach(t=>{t.addEventListener("click",t=>{})})}t.removeEventListener("click",u),t.addEventListener("click",u)}t.addEventListener("open",t=>{l(t.detail)}),t.addEventListener("close",d)})}NodeList.prototype.dropdown=function(t){return initDropdown(this,t)},HTMLElement.prototype.dropdown=function(t){return initDropdown([this],t)};
 /*Drawer*/
