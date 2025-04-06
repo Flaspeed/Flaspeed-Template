@@ -96,35 +96,42 @@
     }
 
     Tooltip.prototype.init = function(element) {
-        if (element.getAttribute('data-tooltip-id')) {
-            const existingTooltip = document.getElementById(element.getAttribute('data-tooltip-id'));
-            if (existingTooltip) existingTooltip.remove();
+        // 1) ننقل قيمة title إلى data-tooltip ونحذفه حتى لا يظهر التولتيب الافتراضي
+        const titleAttr = element.getAttribute('title');
+        if (titleAttr) {
+            element.setAttribute('data-tooltip', titleAttr);
+            element.removeAttribute('title');
         }
 
+        // 2) نتأكد من إزالة أي تولتيب سابق
+        if (element.getAttribute('data-tooltip-id')) {
+            const old = document.getElementById(element.getAttribute('data-tooltip-id'));
+            if (old) old.remove();
+        }
+
+        // 3) إنشاء التولتيب الجديد
         const tooltipId = createUniqueId();
         element.setAttribute('data-tooltip-id', tooltipId);
 
-        // إنشاء عناصر tooltip
         const tooltipEl = document.createElement('div');
         tooltipEl.className = 'material-tooltip';
         tooltipEl.id = tooltipId;
         tooltipEl.style.margin = '0';
+        tooltipEl.style.position = 'absolute';
+        tooltipEl.style.visibility = 'hidden';
+        tooltipEl.style.opacity = '0';
 
         const tooltipContentEl = document.createElement('span');
-        const tooltipText = this.getTooltipText(element);
-
-        // إزالة السمة title لتجنب تداخل الـ tooltip الأصلي للمتصفح
-        element.removeAttribute('title');
-
-        if (this.isHtml(element)) {
-            tooltipContentEl.innerHTML = tooltipText;
-        } else {
-            tooltipContentEl.textContent = tooltipText;
-        }
+        const txt = this.getTooltipText(element);
+        if (this.isHtml(element)) tooltipContentEl.innerHTML = txt;
+        else tooltipContentEl.textContent = txt;
 
         const backdropEl = document.createElement('div');
         backdropEl.className = 'backdrop';
         backdropEl.style.margin = '0';
+        backdropEl.style.position = 'absolute';
+        backdropEl.style.visibility = 'hidden';
+        backdropEl.style.opacity = '0';
 
         tooltipEl.appendChild(tooltipContentEl);
         tooltipEl.appendChild(backdropEl);
@@ -134,120 +141,107 @@
         return tooltipEl;
     };
 
-    Tooltip.prototype.getTooltipText = function(element) {
-        return element.getAttribute('data-tooltip') || 
-               this.options.tooltip || 
-               element.getAttribute('title') || '';
+    Tooltip.prototype.getTooltipText = function(el) {
+        return el.getAttribute('data-tooltip') ||
+               this.options.tooltip ||
+               '';
     };
 
-    Tooltip.prototype.isHtml = function(element) {
-        return element.getAttribute('data-html') === 'true' || this.options.html;
+    Tooltip.prototype.isHtml = function(el) {
+        return el.getAttribute('data-html') === 'true' || this.options.html;
     };
 
-    Tooltip.prototype.getPosition = function(element) {
-        return element.getAttribute('data-position') || this.options.position;
+    Tooltip.prototype.getPosition = function(el) {
+        return el.getAttribute('data-position') || this.options.position;
     };
 
-    Tooltip.prototype.getDelay = function(element) {
-        const delay = element.getAttribute('data-delay');
-        return delay !== null && delay !== '' ? parseInt(delay) : this.options.delay;
+    Tooltip.prototype.getDelay = function(el) {
+        const d = el.getAttribute('data-delay');
+        return d != null && d !== '' ? parseInt(d, 10) : this.options.delay;
     };
 
     Tooltip.prototype.attachEvents = function(targetEl, tooltipEl, backdropEl) {
         let hoverTimeout;
         let isVisible = false;
-        const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
         const showTooltip = () => {
-            const position = this.getPosition(targetEl);
-            const { left, top, translateX, translateY } = adjustPosition(targetEl, tooltipEl, backdropEl, position);
+            const pos = this.getPosition(targetEl);
+            const { left, top, translateX, translateY } = adjustPosition(targetEl, tooltipEl, backdropEl, pos);
 
-            tooltipEl.style.visibility = 'visible';
             tooltipEl.style.left = left + 'px';
             tooltipEl.style.top = top + 'px';
-            backdropEl.style.visibility = 'visible';
-
-            // حسابات التحريك والأنيميشن
-            const tooltipWidth = tooltipEl.offsetWidth;
-            const tooltipHeight = tooltipEl.offsetHeight;
-            const backdropWidth = backdropEl.offsetWidth;
-            const backdropHeight = backdropEl.offsetHeight;
-
-            const scaleX = Math.SQRT2 * tooltipWidth / backdropWidth;
-            const scaleY = Math.SQRT2 * tooltipHeight / backdropHeight;
-            const scale = Math.max(scaleX, scaleY);
-
-            // تطبيق الأنيميشن
             tooltipEl.style.transition = 'transform 0.35s, opacity 0.3s';
-            backdropEl.style.transition = 'transform 0.3s, opacity 0.3s';
-
-            tooltipEl.style.transform = `translateY(${translateY}) translateX(${translateX})`;
+            tooltipEl.style.transform = `translateX(${translateX}) translateY(${translateY})`;
             tooltipEl.style.opacity = '1';
+            tooltipEl.style.visibility = 'visible';
 
-            backdropEl.style.transform = `scale(${scale})`;
+            backdropEl.style.transition = 'transform 0.3s, opacity 0.3s';
+            const sx = Math.SQRT2 * tooltipEl.offsetWidth / backdropEl.offsetWidth;
+            const sy = Math.SQRT2 * tooltipEl.offsetHeight / backdropEl.offsetHeight;
+            backdropEl.style.transform = `scale(${Math.max(sx, sy)})`;
             backdropEl.style.opacity = '1';
+            backdropEl.style.visibility = 'visible';
 
             isVisible = true;
         };
 
         const hideTooltip = () => {
-            tooltipEl.style.transform = 'translateY(0) translateX(0)';
+            tooltipEl.style.transform = 'translateX(0) translateY(0)';
             tooltipEl.style.opacity = '0';
             backdropEl.style.transform = 'scale(1)';
             backdropEl.style.opacity = '0';
-
+            isVisible = false;
             setTimeout(() => {
                 if (!isVisible) {
                     tooltipEl.style.visibility = 'hidden';
                     backdropEl.style.visibility = 'hidden';
                 }
-                isVisible = false;
             }, 225);
         };
 
-        // إذا كان الجهاز لا يدعم اللمس، نستخدم أحداث الماوس
-        if (!isTouchDevice) {
-            targetEl.addEventListener('mouseenter', () => {
-                hoverTimeout = setTimeout(() => {
-                    showTooltip();
-                }, this.getDelay(targetEl));
-            });
+        // أحداث الفأرة
+        targetEl.addEventListener('mouseenter', () => {
+            hoverTimeout = setTimeout(showTooltip, this.getDelay(targetEl));
+        });
+        targetEl.addEventListener('mouseleave', () => {
+            clearTimeout(hoverTimeout);
+            hideTooltip();
+        });
 
-            targetEl.addEventListener('mouseleave', () => {
-                clearTimeout(hoverTimeout);
-                setTimeout(hideTooltip, 225);
-            });
+        // دعم اللمس عبر Pointer Events أو Touch Events مع passive:false
+        const downHandler = (e) => {
+            e.preventDefault();
+            showTooltip();
+        };
+        const upHandler = (e) => {
+            e.preventDefault();
+            hideTooltip();
+        };
+
+        if (window.PointerEvent) {
+            targetEl.addEventListener('pointerdown', downHandler, { passive: false });
+            targetEl.addEventListener('pointerup',   upHandler,   { passive: false });
+            targetEl.addEventListener('pointercancel', upHandler,  { passive: false });
         } else {
-            // على أجهزة اللمس، نستخدم أحداث اللمس فقط
-            targetEl.addEventListener('touchstart', (e) => {
-                showTooltip();
-            });
-
-            targetEl.addEventListener('touchend', (e) => {
-                hideTooltip();
-            });
-
-            targetEl.addEventListener('touchcancel', (e) => {
-                hideTooltip();
-            });
+            targetEl.addEventListener('touchstart',  downHandler, { passive: false });
+            targetEl.addEventListener('touchend',    upHandler,   { passive: false });
+            targetEl.addEventListener('touchcancel', upHandler,   { passive: false });
         }
     };
 
-    // دالة التصدير العامة لإنشاء tooltip
+    // التصدير العام لإنشاء أو إزالة التولتيب
     window.VanillaTooltip = function(selector, options) {
         if (options === 'remove') {
-            const tooltipId = selector.getAttribute('data-tooltip-id');
-            if (tooltipId) {
-                const tooltipEl = document.getElementById(tooltipId);
-                if (tooltipEl) tooltipEl.remove();
+            const id = selector.getAttribute('data-tooltip-id');
+            if (id) {
+                const el = document.getElementById(id);
+                if (el) el.remove();
                 selector.removeAttribute('data-tooltip-id');
             }
             return;
         }
-
-        const tooltipInstance = new Tooltip(options);
-        tooltipInstance.init(selector);
-
+        const inst = new Tooltip(options);
+        inst.init(selector);
         return selector;
     };
 })();
