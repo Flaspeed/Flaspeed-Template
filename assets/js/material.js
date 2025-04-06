@@ -11,7 +11,7 @@ if(WavesAllow){!function(n){var t=t||{},e=document.querySelectorAll.bind(documen
 ==============================================================*/
 if(Tooltips){tooltip()};
 function tooltip(){
-if (isTouchOnlyDevice) {
+if (!isTouchOnlyDevice && !isMobileTooltip) {
 document.addEventListener("touchstart", function (event) { 
 if (!(event.target instanceof Element)) return;
 const btn = event.target.closest(".tooltipped");
