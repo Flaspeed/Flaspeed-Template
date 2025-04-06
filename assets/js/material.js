@@ -263,7 +263,7 @@ if(WavesAllow){!function(n){var t=t||{},e=document.querySelectorAll.bind(documen
 if(Tooltips){tooltip()};
 function tooltip(){
 if (isTouchOnlyDevice) {
-document.addEventListener("touchstart", function (event) { 
+document.addEventListener("pointerdown", function (event) { 
 if (!(event.target instanceof Element)) return;
 const btn = event.target.closest(".tooltipped");
 if (!btn) return;
