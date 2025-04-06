@@ -11,7 +11,7 @@ if(WavesAllow){!function(n){var t=t||{},e=document.querySelectorAll.bind(documen
 ==============================================================*/
 if(Tooltips){tooltip()};
 function tooltip(){
-if(isMobileTooltip && isTouchOnlyDevice){
+if(!isMobileTooltip && isTouchOnlyDevice){
 const elements = document.querySelectorAll('.tooltipped');
 if (elements.length) {
 for (let i = 0; i < elements.length; i++) {
