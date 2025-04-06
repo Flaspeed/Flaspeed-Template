@@ -27,7 +27,7 @@ el.classList.remove('tooltipped');
 }
 }
 } else {
-document.addEventListener("pointerdown", function (event) { 
+document.addEventListener("mouseenter", function (event) { 
 if (!(event.target instanceof Element)) return;
 const btn = event.target.closest(".tooltipped");
 if (!btn) return;
