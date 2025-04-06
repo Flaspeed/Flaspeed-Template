@@ -1,11 +1,11 @@
 // Vanilla JS Tooltip Plugin
 (function() {
-    // Utility function to generate unique ID
-    function generateGUID() {
+    // دالة لإنشاء مُعرّف فريد
+    function createUniqueId() {
         return 'flaspeedtooltip-' + Math.random().toString(16).slice(2, 14);
     }
 
-    // Utility function to adjust tooltip position
+    // دالة لضبط موضع tooltip والعناصر المرافقة له
     function adjustPosition(targetEl, tooltipEl, backdropEl, position) {
         const targetRect = targetEl.getBoundingClientRect();
         const tooltipRect = tooltipEl.getBoundingClientRect();
@@ -50,7 +50,7 @@
             case 'right':
                 top = targetRect.top + scrollTop + targetRect.height / 2 - tooltipRect.height / 2;
                 left = targetRect.left + scrollLeft + targetRect.width;
-                translateX = '+10px';
+                translateX = '10px';
                 backdropEl.style.cssText = `
                     top: -7px;
                     left: 0;
@@ -65,7 +65,7 @@
             default: // bottom
                 top = targetRect.top + scrollTop + targetRect.height;
                 left = targetRect.left + scrollLeft + targetRect.width / 2 - tooltipRect.width / 2;
-                translateY = '+10px';
+                translateY = '10px';
                 backdropEl.style.cssText = `
                     top: 0;
                     left: 0;
@@ -73,7 +73,7 @@
                 `;
         }
 
-        // Boundary checks
+        // التحقق من حدود الشاشة
         if (left < 0) left = 4;
         if (left + tooltipRect.width > windowWidth) left -= (left + tooltipRect.width - windowWidth);
         if (top < 0) top = 4;
@@ -84,14 +84,7 @@
         return { left, top, translateX, translateY };
     }
 
-    // Check if it's a touch device
-    const isTouchDevice = () => {
-        return ('ontouchstart' in window) || 
-               (navigator.maxTouchPoints > 0) || 
-               (navigator.msMaxTouchPoints > 0);
-    };
-
-    // Tooltip initialization and methods
+    // تعريف الكلاس الخاص بالtooltip
     function Tooltip(options) {
         this.defaultOptions = {
             delay: 350,
@@ -100,7 +93,6 @@
             html: false
         };
         this.options = Object.assign({}, this.defaultOptions, options);
-        this.isTouch = isTouchDevice();
     }
 
     Tooltip.prototype.init = function(element) {
@@ -109,17 +101,20 @@
             if (existingTooltip) existingTooltip.remove();
         }
 
-        const tooltipId = generateGUID();
+        const tooltipId = createUniqueId();
         element.setAttribute('data-tooltip-id', tooltipId);
 
-        // Create tooltip elements
+        // إنشاء عناصر tooltip
         const tooltipEl = document.createElement('div');
         tooltipEl.className = 'material-tooltip';
         tooltipEl.id = tooltipId;
-        tooltipEl.style.margin = '0'; // Remove any default margins
+        tooltipEl.style.margin = '0';
 
         const tooltipContentEl = document.createElement('span');
         const tooltipText = this.getTooltipText(element);
+
+        // إزالة السمة title لتجنب تداخل الـ tooltip الأصلي للمتصفح
+        element.removeAttribute('title');
 
         if (this.isHtml(element)) {
             tooltipContentEl.innerHTML = tooltipText;
@@ -129,7 +124,7 @@
 
         const backdropEl = document.createElement('div');
         backdropEl.className = 'backdrop';
-        backdropEl.style.margin = '0'; // Remove any default margins
+        backdropEl.style.margin = '0';
 
         tooltipEl.appendChild(tooltipContentEl);
         tooltipEl.appendChild(backdropEl);
@@ -161,18 +156,18 @@
     Tooltip.prototype.attachEvents = function(targetEl, tooltipEl, backdropEl) {
         let hoverTimeout;
         let isVisible = false;
-        const isTouch = this.isTouch;
+        const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 
         const showTooltip = () => {
             const position = this.getPosition(targetEl);
             const { left, top, translateX, translateY } = adjustPosition(targetEl, tooltipEl, backdropEl, position);
 
             tooltipEl.style.visibility = 'visible';
-            tooltipEl.style.left = `${left}px`;
-            tooltipEl.style.top = `${top}px`;
+            tooltipEl.style.left = left + 'px';
+            tooltipEl.style.top = top + 'px';
             backdropEl.style.visibility = 'visible';
 
-            // Animation calculations
+            // حسابات التحريك والأنيميشن
             const tooltipWidth = tooltipEl.offsetWidth;
             const tooltipHeight = tooltipEl.offsetHeight;
             const backdropWidth = backdropEl.offsetWidth;
@@ -182,7 +177,7 @@
             const scaleY = Math.SQRT2 * tooltipHeight / backdropHeight;
             const scale = Math.max(scaleX, scaleY);
 
-            // Apply animations
+            // تطبيق الأنيميشن
             tooltipEl.style.transition = 'transform 0.35s, opacity 0.3s';
             backdropEl.style.transition = 'transform 0.3s, opacity 0.3s';
 
@@ -210,9 +205,9 @@
             }, 225);
         };
 
-        // Mouse events for non-touch devices
-        if (!isTouch) {
-            targetEl.addEventListener('mouseenter', (e) => {
+        // إذا كان الجهاز لا يدعم اللمس، نستخدم أحداث الماوس
+        if (!isTouchDevice) {
+            targetEl.addEventListener('mouseenter', () => {
                 hoverTimeout = setTimeout(() => {
                     showTooltip();
                 }, this.getDelay(targetEl));
@@ -222,39 +217,23 @@
                 clearTimeout(hoverTimeout);
                 setTimeout(hideTooltip, 225);
             });
-        }
-        // Touch events 
-        else {
-            // For touch devices, show tooltip immediately on touch with minimal delay
+        } else {
+            // على أجهزة اللمس، نستخدم أحداث اللمس فقط
             targetEl.addEventListener('touchstart', (e) => {
-                e.preventDefault(); // Prevent default touch behavior
-                clearTimeout(hoverTimeout);
-                hoverTimeout = setTimeout(() => {
-                    showTooltip();
-                }, 10); // Use a very small delay for touch
-            }, { passive: false });
+                showTooltip();
+            });
 
-            // Hide tooltip when touch ends
             targetEl.addEventListener('touchend', (e) => {
-                clearTimeout(hoverTimeout);
-                setTimeout(hideTooltip, 225);
+                hideTooltip();
             });
 
-            targetEl.addEventListener('touchcancel', () => {
-                clearTimeout(hoverTimeout);
-                setTimeout(hideTooltip, 225);
+            targetEl.addEventListener('touchcancel', (e) => {
+                hideTooltip();
             });
-
-            // Hide tooltip when touching elsewhere on the page
-            document.addEventListener('touchstart', (e) => {
-                if (isVisible && e.target !== targetEl && !tooltipEl.contains(e.target)) {
-                    setTimeout(hideTooltip, 225);
-                }
-            }, { passive: true });
         }
     };
 
-    // Expose as global function
+    // دالة التصدير العامة لإنشاء tooltip
     window.VanillaTooltip = function(selector, options) {
         if (options === 'remove') {
             const tooltipId = selector.getAttribute('data-tooltip-id');
@@ -263,12 +242,11 @@
                 if (tooltipEl) tooltipEl.remove();
                 selector.removeAttribute('data-tooltip-id');
             }
-
             return;
         }
 
-        const tooltip = new Tooltip(options);
-        tooltip.init(selector);
+        const tooltipInstance = new Tooltip(options);
+        tooltipInstance.init(selector);
 
         return selector;
     };
