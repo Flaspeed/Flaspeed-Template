@@ -36,7 +36,7 @@ window._vanillaTooltips = new Map();
 }
 const tooltipId = btn.dataset.tooltipId || btn.getAttribute("id") || Math.random().toString(36).slice(2, 11);
 if (!window._vanillaTooltips.has(tooltipId)) {
-window._vanillaTooltips.set(tooltipId, new VanillaTooltip(btn,{delay: 50}));
+window._vanillaTooltips.set(tooltipId, new VanillaTooltip(btn,{delay: 50,position:btn.closest('.nav-drawer') && btn.closest('.social') ? 'top' : 'bottom'}));
 }
 }, true);
 }
