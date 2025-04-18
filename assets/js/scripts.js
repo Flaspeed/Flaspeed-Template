@@ -1114,7 +1114,7 @@ KY["640"] = Ku;
 KA.breakpoints = KY;
 new Splide(elems, KA).on('mounted', () => {
 elems.previousElementSibling.classList.contains('posts-loading') && (elems.previousElementSibling.remove());
-elems.querySelector('.splide__track').fadeIn(300,'block');
+elems.fadeIn(300,'block');
 elems.setAttribute('data-mounted', 'true');
 }).mount();
 }
