@@ -1,22 +1,13 @@
 // Vanilla JS Tooltip Plugin
 if(!isMobileTooltip){
-    (function() {
-        // أداة توليد معرف فريد
+    (function () {
+        // Utility function to generate unique ID
         function generateGUID() {
             return 'flaspeedtooltip-' + Math.random().toString(16).slice(2, 14);
         }
         
-        // حساب موضع الـ tooltip بشكل ديناميكي دائمًا
+        // Utility function to adjust tooltip position responsively
         function adjustPosition(targetEl, tooltipEl, backdropEl, position) {
-            // تأكد أن العنصر ظاهر ليتم حساب الأبعاد بدقة
-            tooltipEl.style.visibility = 'hidden';
-            tooltipEl.style.display = 'block';
-            tooltipEl.style.left = '-9999px';
-            tooltipEl.style.top = '-9999px';
-            backdropEl.style.visibility = 'hidden';
-            backdropEl.style.display = 'block';
-        
-            // احصل على الأبعاد
             const targetRect = targetEl.getBoundingClientRect();
             const tooltipRect = tooltipEl.getBoundingClientRect();
             const backdropRect = backdropEl.getBoundingClientRect();
@@ -28,73 +19,42 @@ if(!isMobileTooltip){
             let left = 0, top = 0;
             let translateX = '0px', translateY = '0px';
         
-            switch(position) {
+            switch (position) {
                 case 'top':
-                    top = targetRect.top + scrollTop - tooltipRect.height;
+                    top = targetRect.top + scrollTop - tooltipRect.height - 8;
                     left = targetRect.left + scrollLeft + targetRect.width / 2 - tooltipRect.width / 2;
                     translateY = '-10px';
-                    backdropEl.style.cssText = `
-                        bottom: 0;
-                        left: 0;
-                        border-radius: 14px 14px 0 0;
-                        transform-origin: 50% 100%;
-                        margin-top: ${tooltipRect.height}px;
-                        margin-left: ${tooltipRect.width / 2 - backdropRect.width / 2}px;
-                    `;
+                    backdropEl.style.cssText = `bottom: 0; left: 0; border-radius: 14px 14px 0 0; transform-origin: 50% 100%; margin-top: ${tooltipRect.height}px; margin-left: ${tooltipRect.width / 2 - backdropRect.width / 2}px;`;
                     break;
                 case 'left':
                     top = targetRect.top + scrollTop + targetRect.height / 2 - tooltipRect.height / 2;
-                    left = targetRect.left + scrollLeft - tooltipRect.width;
+                    left = targetRect.left + scrollLeft - tooltipRect.width - 8;
                     translateX = '-10px';
-                    backdropEl.style.cssText = `
-                        top: -7px;
-                        right: 0;
-                        width: 14px;
-                        height: 14px;
-                        border-radius: 14px 0 0 14px;
-                        transform-origin: 95% 50%;
-                        margin-top: ${tooltipRect.height / 2}px;
-                        margin-left: ${tooltipRect.width}px;
-                    `;
+                    backdropEl.style.cssText = `top: -7px; right: 0; width: 14px; height: 14px; border-radius: 14px 0 0 14px; transform-origin: 95% 50%; margin-top: ${tooltipRect.height / 2}px; margin-left: ${tooltipRect.width}px;`;
                     break;
                 case 'right':
                     top = targetRect.top + scrollTop + targetRect.height / 2 - tooltipRect.height / 2;
-                    left = targetRect.left + scrollLeft + targetRect.width;
+                    left = targetRect.left + scrollLeft + targetRect.width + 8;
                     translateX = '+10px';
-                    backdropEl.style.cssText = `
-                        top: -7px;
-                        left: 0;
-                        width: 14px;
-                        height: 14px;
-                        border-radius: 0 14px 14px 0;
-                        transform-origin: 5% 50%;
-                        margin-top: ${tooltipRect.height / 2}px;
-                        margin-left: 0px;
-                    `;
+                    backdropEl.style.cssText = `top: -7px; left: 0; width: 14px; height: 14px; border-radius: 0 14px 14px 0; transform-origin: 5% 50%; margin-top: ${tooltipRect.height / 2}px; margin-left: 0px;`;
                     break;
                 default: // bottom
-                    top = targetRect.top + scrollTop + targetRect.height;
+                    top = targetRect.top + scrollTop + targetRect.height + 8;
                     left = targetRect.left + scrollLeft + targetRect.width / 2 - tooltipRect.width / 2;
                     translateY = '+10px';
-                    backdropEl.style.cssText = `
-                        top: 0;
-                        left: 0;
-                        margin-left: ${tooltipRect.width / 2 - backdropRect.width / 2}px;
-                    `;
+                    backdropEl.style.cssText = `top: 0; left: 0; margin-left: ${tooltipRect.width / 2 - backdropRect.width / 2}px;`;
             }
         
-            // تصحيح الحدود
-            if (left < 0) left = 4;
-            if (left + tooltipRect.width > windowWidth) left -= (left + tooltipRect.width - windowWidth);
-            if (top < 0) top = 4;
-            if (top + tooltipRect.height > windowHeight + scrollTop) {
-                top -= (top + tooltipRect.height - windowHeight);
-            }
+            // Boundary checks for mobile and desktop
+            if (left < 4) left = 4;
+            if (left + tooltipRect.width > windowWidth) left = windowWidth - tooltipRect.width - 4;
+            if (top < 4) top = 4;
+            if (top + tooltipRect.height > windowHeight + scrollTop) top = windowHeight + scrollTop - tooltipRect.height - 4;
         
             return { left, top, translateX, translateY };
         }
         
-        // كائن الـ Tooltip
+        // Tooltip initialization and methods
         function Tooltip(options) {
             this.defaultOptions = {
                 delay: 350,
@@ -103,10 +63,10 @@ if(!isMobileTooltip){
                 html: false
             };
             this.options = Object.assign({}, this.defaultOptions, options);
+            this.activeObservers = new Map();
         }
         
-        Tooltip.prototype.init = function(element) {
-            // إزالة أي tooltip سابق
+        Tooltip.prototype.init = function (element) {
             if (element.getAttribute('data-tooltip-id')) {
                 const existingTooltip = document.getElementById(element.getAttribute('data-tooltip-id'));
                 if (existingTooltip) existingTooltip.remove();
@@ -115,7 +75,7 @@ if(!isMobileTooltip){
             const tooltipId = generateGUID();
             element.setAttribute('data-tooltip-id', tooltipId);
         
-            // إنشاء عناصر الـ tooltip
+            // Create tooltip elements
             const tooltipEl = document.createElement('div');
             tooltipEl.className = 'material-tooltip';
             tooltipEl.id = tooltipId;
@@ -125,7 +85,6 @@ if(!isMobileTooltip){
             tooltipEl.style.opacity = '0';
             tooltipEl.style.pointerEvents = 'none';
             tooltipEl.style.zIndex = '9999';
-            tooltipEl.style.transition = 'transform 0.35s, opacity 0.3s';
         
             const tooltipContentEl = document.createElement('span');
             const tooltipText = this.getTooltipText(element);
@@ -138,11 +97,6 @@ if(!isMobileTooltip){
             const backdropEl = document.createElement('div');
             backdropEl.className = 'backdrop';
             backdropEl.style.margin = '0';
-            backdropEl.style.position = 'absolute';
-            backdropEl.style.opacity = '0';
-            backdropEl.style.pointerEvents = 'none';
-            backdropEl.style.transition = 'transform 0.3s, opacity 0.3s';
-        
             tooltipEl.appendChild(tooltipContentEl);
             tooltipEl.appendChild(backdropEl);
             document.body.appendChild(tooltipEl);
@@ -151,101 +105,111 @@ if(!isMobileTooltip){
             return tooltipEl;
         };
         
-        Tooltip.prototype.getTooltipText = function(element) {
+        Tooltip.prototype.getTooltipText = function (element) {
             return element.getAttribute('data-tooltip') || this.options.tooltip || element.getAttribute('title') || '';
         };
         
-        Tooltip.prototype.isHtml = function(element) {
+        Tooltip.prototype.isHtml = function (element) {
             return element.getAttribute('data-html') === 'true' || this.options.html;
         };
         
-        Tooltip.prototype.getPosition = function(element) {
+        Tooltip.prototype.getPosition = function (element) {
             return element.getAttribute('data-position') || this.options.position;
         };
         
-        Tooltip.prototype.getDelay = function(element) {
+        Tooltip.prototype.getDelay = function (element) {
             const delay = element.getAttribute('data-delay');
             return delay !== null && delay !== '' ? parseInt(delay) : this.options.delay;
         };
         
-        Tooltip.prototype.attachEvents = function(targetEl, tooltipEl, backdropEl) {
+        Tooltip.prototype.attachEvents = function (targetEl, tooltipEl, backdropEl) {
             let hoverTimeout;
             let isVisible = false;
+            let lastTargetRect = null;
+            let resizeObserver = null;
+            let mutationObserver = null;
         
-            // دالة إظهار الـ tooltip مع إعادة حساب الأبعاد في كل مرة
-            const showTooltip = () => {
-                // إعادة حساب الأبعاد والموضع في كل ظهور
-                tooltipEl.style.display = 'block';
-                tooltipEl.style.visibility = 'hidden';
-                tooltipEl.style.opacity = '0';
-                backdropEl.style.display = 'block';
-                backdropEl.style.visibility = 'hidden';
-                backdropEl.style.opacity = '0';
-                // بعد وضع display: block يمكن حساب الأبعاد بدقة
+            const updateTooltipPosition = () => {
+                if (!isVisible) return;
                 const position = this.getPosition(targetEl);
                 const { left, top, translateX, translateY } = adjustPosition(targetEl, tooltipEl, backdropEl, position);
-                // ثم إظهار العنصر فعليًا
                 tooltipEl.style.left = `${left}px`;
                 tooltipEl.style.top = `${top}px`;
+                tooltipEl.style.transform = `translateY(${translateY}) translateX(${translateX})`;
+            };
+        
+            const showTooltip = () => {
                 tooltipEl.style.visibility = 'visible';
                 tooltipEl.style.opacity = '1';
-                tooltipEl.style.transform = `translateY(${translateY}) translateX(${translateX})`;
+                tooltipEl.style.pointerEvents = 'auto';
                 backdropEl.style.visibility = 'visible';
                 backdropEl.style.opacity = '1';
-                // حساب التحجيم
-                const tooltipWidth = tooltipEl.offsetWidth;
-                const tooltipHeight = tooltipEl.offsetHeight;
-                const backdropWidth = backdropEl.offsetWidth;
-                const backdropHeight = backdropEl.offsetHeight;
-                const scaleX = Math.SQRT2 * tooltipWidth / (backdropWidth || 1);
-                const scaleY = Math.SQRT2 * tooltipHeight / (backdropHeight || 1);
-                const scale = Math.max(scaleX, scaleY);
-                backdropEl.style.transform = `scale(${scale})`;
+                updateTooltipPosition();
                 isVisible = true;
             };
         
-            // دالة إخفاء الـ tooltip
             const hideTooltip = () => {
                 tooltipEl.style.opacity = '0';
-                tooltipEl.style.transform = 'translateY(0) translateX(0)';
+                tooltipEl.style.pointerEvents = 'none';
                 backdropEl.style.opacity = '0';
-                backdropEl.style.transform = 'scale(1)';
                 setTimeout(() => {
                     if (!isVisible) {
                         tooltipEl.style.visibility = 'hidden';
-                        tooltipEl.style.display = 'none';
                         backdropEl.style.visibility = 'hidden';
-                        backdropEl.style.display = 'none';
                     }
                     isVisible = false;
                 }, 225);
             };
         
-            // دعم pointerenter/leave للجوال والفأرة
-            const showHandler = (e) => {
-                clearTimeout(hoverTimeout);
-                hoverTimeout = setTimeout(showTooltip, this.getDelay(targetEl));
-            };
-            const hideHandler = (e) => {
+            // مراقبة تغيّر حجم العنصر المستهدف
+            if (window.ResizeObserver) {
+                resizeObserver = new ResizeObserver(() => {
+                    if (isVisible) updateTooltipPosition();
+                });
+                resizeObserver.observe(targetEl);
+            }
+        
+            // مراقبة تغيّر الـ DOM (مثلاً إذا تم إخفاء العنصر أو تغيّر مكانه)
+            mutationObserver = new MutationObserver(() => {
+                if (isVisible) updateTooltipPosition();
+            });
+            mutationObserver.observe(document.body, { childList: true, subtree: true, attributes: true });
+        
+            // تحديث الموضع عند تغيير حجم الشاشة
+            window.addEventListener('resize', updateTooltipPosition);
+            window.addEventListener('scroll', updateTooltipPosition, true);
+        
+            // الأحداث الرئيسية
+            targetEl.addEventListener('pointerenter', (e) => {
+                hoverTimeout = setTimeout(() => {
+                    showTooltip();
+                }, this.getDelay(targetEl));
+            });
+        
+            targetEl.addEventListener('pointerleave', () => {
                 clearTimeout(hoverTimeout);
                 setTimeout(hideTooltip, 225);
-            };
+            });
         
-            targetEl.addEventListener('pointerenter', showHandler);
-            targetEl.addEventListener('pointerleave', hideHandler);
-            // دعم اللمس للجوال
-            targetEl.addEventListener('touchstart', showHandler);
-            targetEl.addEventListener('touchend', hideHandler);
-            targetEl.addEventListener('touchcancel', hideHandler);
+            // تنظيف المراقبين عند إزالة التولتيب
+            tooltipEl.cleanupObservers = () => {
+                if (resizeObserver) resizeObserver.disconnect();
+                if (mutationObserver) mutationObserver.disconnect();
+                window.removeEventListener('resize', updateTooltipPosition);
+                window.removeEventListener('scroll', updateTooltipPosition, true);
+            };
         };
         
-        // دالة عالمية للاستخدام
-        window.VanillaTooltip = function(selector, options) {
+        // Expose as global function
+        window.VanillaTooltip = function (selector, options) {
             if (options === 'remove') {
                 const tooltipId = selector.getAttribute('data-tooltip-id');
                 if (tooltipId) {
                     const tooltipEl = document.getElementById(tooltipId);
-                    if (tooltipEl) tooltipEl.remove();
+                    if (tooltipEl) {
+                        if (typeof tooltipEl.cleanupObservers === 'function') tooltipEl.cleanupObservers();
+                        tooltipEl.remove();
+                    }
                     selector.removeAttribute('data-tooltip-id');
                 }
                 return;
