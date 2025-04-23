@@ -3,247 +3,260 @@ if(!isMobileTooltip){
     (function() {
         // Utility function to generate unique ID
         function generateGUID() {
-        return 'flaspeedtooltip-' + Math.random().toString(16).slice(2, 14);
+          return 'flaspeedtooltip-' + Math.random().toString(16).slice(2, 14);
         }
         
         // Utility function to adjust tooltip position
         function adjustPosition(targetEl, tooltipEl, backdropEl, position) {
-        const targetRect = targetEl.getBoundingClientRect();
-        const tooltipRect = tooltipEl.getBoundingClientRect();
-        const backdropRect = backdropEl.getBoundingClientRect();
-        const windowWidth = window.innerWidth;
-        const windowHeight = window.innerHeight;
-        const scrollTop = window.scrollY;
-        const scrollLeft = window.scrollX;
+          const targetRect = targetEl.getBoundingClientRect();
+          const tooltipRect = tooltipEl.getBoundingClientRect();
+          const backdropRect = backdropEl.getBoundingClientRect();
+          const windowWidth = window.innerWidth;
+          const windowHeight = window.innerHeight;
+          const scrollTop = window.scrollY;
+          const scrollLeft = window.scrollX;
         
-        let left = 0, top = 0;
-        let translateX = '0px', translateY = '0px';
+          let left = 0, top = 0;
+          let translateX = '0px', translateY = '0px';
         
-        switch(position) {
-        case 'top':
-        top = targetRect.top + scrollTop - tooltipRect.height;
-        left = targetRect.left + scrollLeft + targetRect.width / 2 - tooltipRect.width / 2;
-        translateY = '-10px';
-        backdropEl.style.cssText = `
-        bottom: 0;
-        left: 0;
-        border-radius: 14px 14px 0 0;
-        transform-origin: 50% 100%;
-        margin-top: ${tooltipRect.height}px;
-        margin-left: ${tooltipRect.width / 2 - backdropRect.width / 2}px;
-        `;
-        break;
-        case 'left':
-        top = targetRect.top + scrollTop + targetRect.height / 2 - tooltipRect.height / 2;
-        left = targetRect.left + scrollLeft - tooltipRect.width;
-        translateX = '-10px';
-        backdropEl.style.cssText = `
-        top: -7px;
-        right: 0;
-        width: 14px;
-        height: 14px;
-        border-radius: 14px 0 0 14px;
-        transform-origin: 95% 50%;
-        margin-top: ${tooltipRect.height / 2}px;
-        margin-left: ${tooltipRect.width}px;
-        `;
-        break;
-        case 'right':
-        top = targetRect.top + scrollTop + targetRect.height / 2 - tooltipRect.height / 2;
-        left = targetRect.left + scrollLeft + targetRect.width;
-        translateX = '+10px';
-        backdropEl.style.cssText = `
-        top: -7px;
-        left: 0;
-        width: 14px;
-        height: 14px;
-        border-radius: 0 14px 14px 0;
-        transform-origin: 5% 50%;
-        margin-top: ${tooltipRect.height / 2}px;
-        margin-left: 0px;
-        `;
-        break;
-        default: // bottom
-        top = targetRect.top + scrollTop + targetRect.height;
-        left = targetRect.left + scrollLeft + targetRect.width / 2 - tooltipRect.width / 2;
-        translateY = '+10px';
-        backdropEl.style.cssText = `
-        top: 0;
-        left: 0;
-        margin-left: ${tooltipRect.width / 2 - backdropRect.width / 2}px;
-        `;
-        }
+          switch(position) {
+            case 'top':
+              top = targetRect.top + scrollTop - tooltipRect.height;
+              left = targetRect.left + scrollLeft + targetRect.width / 2 - tooltipRect.width / 2;
+              translateY = '-10px';
+              backdropEl.style.cssText = `
+                bottom: 0;
+                left: 0;
+                border-radius: 14px 14px 0 0;
+                transform-origin: 50% 100%;
+                margin-top: ${tooltipRect.height}px;
+                margin-left: ${tooltipRect.width / 2 - backdropRect.width / 2}px;
+              `;
+              break;
+            case 'left':
+              top = targetRect.top + scrollTop + targetRect.height / 2 - tooltipRect.height / 2;
+              left = targetRect.left + scrollLeft - tooltipRect.width;
+              translateX = '-10px';
+              backdropEl.style.cssText = `
+                top: -7px;
+                right: 0;
+                width: 14px;
+                height: 14px;
+                border-radius: 14px 0 0 14px;
+                transform-origin: 95% 50%;
+                margin-top: ${tooltipRect.height / 2}px;
+                margin-left: ${tooltipRect.width}px;
+              `;
+              break;
+            case 'right':
+              top = targetRect.top + scrollTop + targetRect.height / 2 - tooltipRect.height / 2;
+              left = targetRect.left + scrollLeft + targetRect.width;
+              translateX = '+10px';
+              backdropEl.style.cssText = `
+                top: -7px;
+                left: 0;
+                width: 14px;
+                height: 14px;
+                border-radius: 0 14px 14px 0;
+                transform-origin: 5% 50%;
+                margin-top: ${tooltipRect.height / 2}px;
+                margin-left: 0px;
+              `;
+              break;
+            default: // bottom
+              top = targetRect.top + scrollTop + targetRect.height;
+              left = targetRect.left + scrollLeft + targetRect.width / 2 - tooltipRect.width / 2;
+              translateY = '+10px';
+              backdropEl.style.cssText = `
+                top: 0;
+                left: 0;
+                margin-left: ${tooltipRect.width / 2 - backdropRect.width / 2}px;
+              `;
+          }
         
-        // Boundary checks
-        if (left < 0) left = 4;
-        if (left + tooltipRect.width > windowWidth) left -= (left + tooltipRect.width - windowWidth);
-        if (top < 0) top = 4;
-        if (top + tooltipRect.height > windowHeight + scrollTop) {
-        top -= (top + tooltipRect.height - windowHeight);
-        }
+          // Boundary checks
+          if (left < 0) left = 4;
+          if (left + tooltipRect.width > windowWidth) left -= (left + tooltipRect.width - windowWidth);
+          if (top < 0) top = 4;
+          if (top + tooltipRect.height > windowHeight + scrollTop) {
+            top -= (top + tooltipRect.height - windowHeight);
+          }
         
-        return { left, top, translateX, translateY };
+          return { left, top, translateX, translateY };
         }
         
         // Tooltip initialization and methods
         function Tooltip(options) {
-        this.defaultOptions = {
-        delay: 350,
-        tooltip: '',
-        position: 'bottom',
-        html: false
-        };
-        this.options = Object.assign({}, this.defaultOptions, options);
+          this.defaultOptions = {
+            delay: 350,
+            tooltip: '',
+            position: 'bottom',
+            html: false
+          };
+          this.options = Object.assign({}, this.defaultOptions, options);
         }
         
         Tooltip.prototype.init = function(element) {
-        if (element.getAttribute('data-tooltip-id')) {
-        const existingTooltip = document.getElementById(element.getAttribute('data-tooltip-id'));
-        if (existingTooltip) existingTooltip.remove();
-        }
+          if (element.getAttribute('data-tooltip-id')) {
+            const existingTooltip = document.getElementById(element.getAttribute('data-tooltip-id'));
+            if (existingTooltip) existingTooltip.remove();
+          }
         
-        const tooltipId = generateGUID();
-        element.setAttribute('data-tooltip-id', tooltipId);
+          const tooltipId = generateGUID();
+          element.setAttribute('data-tooltip-id', tooltipId);
         
-        // Create tooltip elements
-        const tooltipEl = document.createElement('div');
-        tooltipEl.className = 'material-tooltip';
-        tooltipEl.id = tooltipId;
-        tooltipEl.style.margin = '0'; // Remove any default margins
+          // Create tooltip elements
+          const tooltipEl = document.createElement('div');
+          tooltipEl.className = 'material-tooltip';
+          tooltipEl.id = tooltipId;
+          tooltipEl.style.margin = '0'; // Remove any default margins
         
-        const tooltipContentEl = document.createElement('span');
-        const tooltipText = this.getTooltipText(element);
+          const tooltipContentEl = document.createElement('span');
+          const tooltipText = this.getTooltipText(element);
         
-        if (this.isHtml(element)) {
-        tooltipContentEl.innerHTML = tooltipText;
-        } else {
-        tooltipContentEl.textContent = tooltipText;
-        }
+          if (this.isHtml(element)) {
+            tooltipContentEl.innerHTML = tooltipText;
+          } else {
+            tooltipContentEl.textContent = tooltipText;
+          }
         
-        const backdropEl = document.createElement('div');
-        backdropEl.className = 'backdrop';
-        backdropEl.style.margin = '0'; // Remove any default margins
+          const backdropEl = document.createElement('div');
+          backdropEl.className = 'backdrop';
+          backdropEl.style.margin = '0'; // Remove any default margins
         
-        tooltipEl.appendChild(tooltipContentEl);
-        tooltipEl.appendChild(backdropEl);
-        document.body.appendChild(tooltipEl);
+          tooltipEl.appendChild(tooltipContentEl);
+          tooltipEl.appendChild(backdropEl);
+          document.body.appendChild(tooltipEl);
         
-        this.attachEvents(element, tooltipEl, backdropEl);
-        return tooltipEl;
+          this.attachEvents(element, tooltipEl, backdropEl);
+          return tooltipEl;
         };
         
         Tooltip.prototype.getTooltipText = function(element) {
-        return element.getAttribute('data-tooltip') || 
-        this.options.tooltip || 
-        element.getAttribute('title') || '';
+          return element.getAttribute('data-tooltip') || 
+                 this.options.tooltip || 
+                 element.getAttribute('title') || '';
         };
         
         Tooltip.prototype.isHtml = function(element) {
-        return element.getAttribute('data-html') === 'true' || this.options.html;
+          return element.getAttribute('data-html') === 'true' || this.options.html;
         };
         
         Tooltip.prototype.getPosition = function(element) {
-        return element.getAttribute('data-position') || this.options.position;
+          return element.getAttribute('data-position') || this.options.position;
         };
         
         Tooltip.prototype.getDelay = function(element) {
-        const delay = element.getAttribute('data-delay');
-        return delay !== null && delay !== '' ? parseInt(delay) : this.options.delay;
+          const delay = element.getAttribute('data-delay');
+          return delay !== null && delay !== '' ? parseInt(delay) : this.options.delay;
         };
         
         Tooltip.prototype.attachEvents = function(targetEl, tooltipEl, backdropEl) {
-        let hoverTimeout;
-        let isVisible = false;
-        let pointerMoveHandler = null;
+          let hoverTimeout;
+          let isVisible = false;
         
-        const showTooltip = () => {
-          const updatePosition = () => {
+          const showTooltip = () => {
+            // أهم تغيير: إعادة حساب الموضع في كل مرة يُظهر فيها التلميح
             const position = this.getPosition(targetEl);
             const { left, top, translateX, translateY } = adjustPosition(targetEl, tooltipEl, backdropEl, position);
+        
+            tooltipEl.style.visibility = 'visible';
             tooltipEl.style.left = `${left}px`;
             tooltipEl.style.top = `${top}px`;
+            backdropEl.style.visibility = 'visible';
+        
+            // Animation calculations
+            const tooltipWidth = tooltipEl.offsetWidth;
+            const tooltipHeight = tooltipEl.offsetHeight;
+            const backdropWidth = backdropEl.offsetWidth;
+            const backdropHeight = backdropEl.offsetHeight;
+        
+            const scaleX = Math.SQRT2 * tooltipWidth / backdropWidth;
+            const scaleY = Math.SQRT2 * tooltipHeight / backdropHeight;
+            const scale = Math.max(scaleX, scaleY);
+        
+            // Apply animations
+            tooltipEl.style.transition = 'transform 0.35s, opacity 0.3s';
+            backdropEl.style.transition = 'transform 0.3s, opacity 0.3s';
+        
             tooltipEl.style.transform = `translateY(${translateY}) translateX(${translateX})`;
+            tooltipEl.style.opacity = '1';
+        
+            backdropEl.style.transform = `scale(${scale})`;
+            backdropEl.style.opacity = '1';
+        
+            isVisible = true;
           };
-          // أول مرة عند الإظهار
-          tooltipEl.style.visibility = 'visible';
-          backdropEl.style.visibility = 'visible';
-          updatePosition();
         
-          // Animation calculations
-          const tooltipWidth = tooltipEl.offsetWidth;
-          const tooltipHeight = tooltipEl.offsetHeight;
-          const backdropWidth = backdropEl.offsetWidth;
-          const backdropHeight = backdropEl.offsetHeight;
+          const hideTooltip = () => {
+            tooltipEl.style.transform = 'translateY(0) translateX(0)';
+            tooltipEl.style.opacity = '0';
+            backdropEl.style.transform = 'scale(1)';
+            backdropEl.style.opacity = '0';
         
-          const scaleX = Math.SQRT2 * tooltipWidth / backdropWidth;
-          const scaleY = Math.SQRT2 * tooltipHeight / backdropHeight;
-          const scale = Math.max(scaleX, scaleY);
-        
-          // Apply animations
-          tooltipEl.style.transition = 'transform 0.35s, opacity 0.3s';
-          backdropEl.style.transition = 'transform 0.3s, opacity 0.3s';
-        
-          tooltipEl.style.opacity = '1';
-          backdropEl.style.transform = `scale(${scale})`;
-          backdropEl.style.opacity = '1';
-        
-          isVisible = true;
-        
-          // إضافة مستمع pointermove
-          pointerMoveHandler = () => {
-            if (isVisible) updatePosition();
+            setTimeout(() => {
+              if (!isVisible) {
+                tooltipEl.style.visibility = 'hidden';
+                backdropEl.style.visibility = 'hidden';
+              }
+              isVisible = false;
+            }, 225);
           };
-          targetEl.addEventListener('pointermove', pointerMoveHandler);
-        };
         
-        const hideTooltip = () => {
-          tooltipEl.style.transform = 'translateY(0) translateX(0)';
-          tooltipEl.style.opacity = '0';
-          backdropEl.style.transform = 'scale(1)';
-          backdropEl.style.opacity = '0';
-          // إزالة مستمع pointermove
-          if (pointerMoveHandler) {
-            targetEl.removeEventListener('pointermove', pointerMoveHandler);
-            pointerMoveHandler = null;
-          }
-          setTimeout(() => {
-            if (!isVisible) {
-              tooltipEl.style.visibility = 'hidden';
-              backdropEl.style.visibility = 'hidden';
+          targetEl.addEventListener('pointerenter', (e) => {
+            clearTimeout(hoverTimeout); // تنظيف أي مؤقت سابق
+            hoverTimeout = setTimeout(() => {
+              showTooltip();
+            }, this.getDelay(targetEl));
+          });
+        
+          targetEl.addEventListener('pointerleave', () => {
+            clearTimeout(hoverTimeout);
+            setTimeout(hideTooltip, 225);
+          });
+        
+          // إضافة مستمع لتحديث موضع tooltip عند تمرير الصفحة
+          window.addEventListener('scroll', () => {
+            if (isVisible) {
+              const position = this.getPosition(targetEl);
+              const { left, top, translateX, translateY } = adjustPosition(targetEl, tooltipEl, backdropEl, position);
+              
+              tooltipEl.style.left = `${left}px`;
+              tooltipEl.style.top = `${top}px`;
+              tooltipEl.style.transform = `translateY(${translateY}) translateX(${translateX})`;
             }
-            isVisible = false;
-          }, 225);
-        };
+          });
         
-        targetEl.addEventListener('pointerenter', (e) => {
-        hoverTimeout = setTimeout(() => {
-        showTooltip();
-        }, this.getDelay(targetEl));
-        });
-        
-        targetEl.addEventListener('pointerleave', () => {
-        clearTimeout(hoverTimeout);
-        setTimeout(hideTooltip, 225);
-        });
+          // إضافة مستمع لتحديث موضع tooltip عند تغيير حجم النافذة
+          window.addEventListener('resize', () => {
+            if (isVisible) {
+              const position = this.getPosition(targetEl);
+              const { left, top, translateX, translateY } = adjustPosition(targetEl, tooltipEl, backdropEl, position);
+              
+              tooltipEl.style.left = `${left}px`;
+              tooltipEl.style.top = `${top}px`;
+              tooltipEl.style.transform = `translateY(${translateY}) translateX(${translateX})`;
+            }
+          });
         };
         
         // Expose as global function
         window.VanillaTooltip = function(selector, options) {
-        if (options === 'remove') {
-        const tooltipId = selector.getAttribute('data-tooltip-id');
-        if (tooltipId) {
-        const tooltipEl = document.getElementById(tooltipId);
-        if (tooltipEl) tooltipEl.remove();
-        selector.removeAttribute('data-tooltip-id');
-        }
+          if (options === 'remove') {
+            const tooltipId = selector.getAttribute('data-tooltip-id');
+            if (tooltipId) {
+              const tooltipEl = document.getElementById(tooltipId);
+              if (tooltipEl) tooltipEl.remove();
+              selector.removeAttribute('data-tooltip-id');
+            }
         
-        return;
-        }
+            return;
+          }
         
-        const tooltip = new Tooltip(options);
-        tooltip.init(selector);
+          const tooltip = new Tooltip(options);
+          tooltip.init(selector);
         
-        return selector;
+          return selector;
         };
         })();
 };
