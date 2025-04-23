@@ -1,6 +1,6 @@
 // Vanilla JS Tooltip Plugin
 if(!isMobileTooltip){
-    (function() {
+    (function() { 
         // Utility function to generate unique ID
         function generateGUID() {
           return 'flaspeedtooltip-' + Math.random().toString(16).slice(2, 14);
@@ -8,9 +8,12 @@ if(!isMobileTooltip){
       
         // Utility function to adjust tooltip position
         function adjustPosition(targetEl, tooltipEl, backdropEl, position) {
-          // Force reflow to ensure we get current dimensions
-          void targetEl.offsetHeight;
-          
+          // Check if target element is visible
+          const isVisible = targetEl.offsetParent !== null;
+          if (!isVisible) {
+            return { left: 0, top: 0, translateX: '0px', translateY: '0px', visible: false };
+          }
+      
           const targetRect = targetEl.getBoundingClientRect();
           const tooltipRect = tooltipEl.getBoundingClientRect();
           const backdropRect = backdropEl.getBoundingClientRect();
@@ -85,7 +88,21 @@ if(!isMobileTooltip){
             top -= (top + tooltipRect.height - windowHeight);
           }
       
-          return { left, top, translateX, translateY };
+          return { left, top, translateX, translateY, visible: true };
+        }
+      
+        // Observer to monitor DOM changes
+        function createIntersectionObserver(targetEl, tooltipEl, backdropEl, callback) {
+          const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+              if (entry.target === targetEl) {
+                callback(entry.isIntersecting);
+              }
+            });
+          }, { threshold: 0.1 });
+          
+          observer.observe(targetEl);
+          return observer;
         }
       
         // Tooltip initialization and methods
@@ -97,12 +114,19 @@ if(!isMobileTooltip){
             html: false
           };
           this.options = Object.assign({}, this.defaultOptions, options);
+          this.observerMap = new Map(); // Store observer instances keyed by target element
         }
       
         Tooltip.prototype.init = function(element) {
           if (element.getAttribute('data-tooltip-id')) {
             const existingTooltip = document.getElementById(element.getAttribute('data-tooltip-id'));
             if (existingTooltip) existingTooltip.remove();
+            
+            // Clean up observer if exists
+            if (this.observerMap.has(element)) {
+              this.observerMap.get(element).disconnect();
+              this.observerMap.delete(element);
+            }
           }
       
           const tooltipId = generateGUID();
@@ -113,6 +137,7 @@ if(!isMobileTooltip){
           tooltipEl.className = 'material-tooltip';
           tooltipEl.id = tooltipId;
           tooltipEl.style.margin = '0'; // Remove any default margins
+          tooltipEl.style.visibility = 'hidden'; // Start hidden
       
           const tooltipContentEl = document.createElement('span');
           const tooltipText = this.getTooltipText(element);
@@ -126,6 +151,7 @@ if(!isMobileTooltip){
           const backdropEl = document.createElement('div');
           backdropEl.className = 'backdrop';
           backdropEl.style.margin = '0'; // Remove any default margins
+          backdropEl.style.visibility = 'hidden'; // Start hidden
       
           tooltipEl.appendChild(tooltipContentEl);
           tooltipEl.appendChild(backdropEl);
@@ -157,29 +183,21 @@ if(!isMobileTooltip){
         Tooltip.prototype.attachEvents = function(targetEl, tooltipEl, backdropEl) {
           let hoverTimeout;
           let isVisible = false;
-          let animationFrameId;
-      
-          const updateTooltipPosition = () => {
-            if (!isVisible) return;
-            
-            const position = this.getPosition(targetEl);
-            const { left, top, translateX, translateY } = adjustPosition(targetEl, tooltipEl, backdropEl, position);
-            
-            tooltipEl.style.left = `${left}px`;
-            tooltipEl.style.top = `${top}px`;
-            tooltipEl.style.transform = `translateY(${translateY}) translateX(${translateX})`;
-            
-            // Continue updating position while tooltip is visible
-            animationFrameId = requestAnimationFrame(updateTooltipPosition);
-          };
       
           const showTooltip = () => {
             const position = this.getPosition(targetEl);
-            const { left, top, translateX, translateY } = adjustPosition(targetEl, tooltipEl, backdropEl, position);
+            const result = adjustPosition(targetEl, tooltipEl, backdropEl, position);
+            
+            // Don't show tooltip if target element is not visible
+            if (!result.visible) {
+              tooltipEl.style.visibility = 'hidden';
+              backdropEl.style.visibility = 'hidden';
+              return;
+            }
       
             tooltipEl.style.visibility = 'visible';
-            tooltipEl.style.left = `${left}px`;
-            tooltipEl.style.top = `${top}px`;
+            tooltipEl.style.left = `${result.left}px`;
+            tooltipEl.style.top = `${result.top}px`;
             backdropEl.style.visibility = 'visible';
       
             // Animation calculations
@@ -196,37 +214,13 @@ if(!isMobileTooltip){
             tooltipEl.style.transition = 'transform 0.35s, opacity 0.3s';
             backdropEl.style.transition = 'transform 0.3s, opacity 0.3s';
       
-            tooltipEl.style.transform = `translateY(${translateY}) translateX(${translateX})`;
+            tooltipEl.style.transform = `translateY(${result.translateY}) translateX(${result.translateX})`;
             tooltipEl.style.opacity = '1';
       
             backdropEl.style.transform = `scale(${scale})`;
             backdropEl.style.opacity = '1';
       
             isVisible = true;
-            
-            // Start continuous position updating
-            animationFrameId = requestAnimationFrame(updateTooltipPosition);
-            
-            // Also update position on window resize and scroll events
-            window.addEventListener('resize', updateTooltipPosition);
-            window.addEventListener('scroll', updateTooltipPosition);
-            
-            // Watch for DOM changes near the target element
-            const observer = new MutationObserver(() => {
-              if (isVisible) {
-                updateTooltipPosition();
-              }
-            });
-            
-            observer.observe(document.body, { 
-              childList: true, 
-              subtree: true,
-              attributes: true,
-              attributeFilter: ['style', 'class']
-            });
-            
-            // Store observer to disconnect later
-            tooltipEl._mutationObserver = observer;
           };
       
           const hideTooltip = () => {
@@ -234,22 +228,6 @@ if(!isMobileTooltip){
             tooltipEl.style.opacity = '0';
             backdropEl.style.transform = 'scale(1)';
             backdropEl.style.opacity = '0';
-            
-            // Stop continuous updates
-            if (animationFrameId) {
-              cancelAnimationFrame(animationFrameId);
-              animationFrameId = null;
-            }
-            
-            // Remove event listeners
-            window.removeEventListener('resize', updateTooltipPosition);
-            window.removeEventListener('scroll', updateTooltipPosition);
-            
-            // Disconnect observer
-            if (tooltipEl._mutationObserver) {
-              tooltipEl._mutationObserver.disconnect();
-              tooltipEl._mutationObserver = null;
-            }
       
             setTimeout(() => {
               if (!isVisible) {
@@ -260,8 +238,19 @@ if(!isMobileTooltip){
             }, 225);
           };
       
+          // Set up mutation observer to watch for visibility changes
+          const callback = (isVisible) => {
+            if (!isVisible && hoverTimeout) {
+              clearTimeout(hoverTimeout);
+              hideTooltip();
+            }
+          };
+          
+          const observer = createIntersectionObserver(targetEl, tooltipEl, backdropEl, callback);
+          this.observerMap.set(targetEl, observer);
+      
+          // Set up pointer events
           targetEl.addEventListener('pointerenter', (e) => {
-            clearTimeout(hoverTimeout);
             hoverTimeout = setTimeout(() => {
               showTooltip();
             }, this.getDelay(targetEl));
@@ -269,22 +258,27 @@ if(!isMobileTooltip){
       
           targetEl.addEventListener('pointerleave', () => {
             clearTimeout(hoverTimeout);
-            hideTooltip();
+            setTimeout(hideTooltip, 225);
           });
-          
-          // Touch devices need special handling
-          targetEl.addEventListener('touchstart', (e) => {
-            e.preventDefault(); // Prevent default touch behavior
-            clearTimeout(hoverTimeout);
-            hoverTimeout = setTimeout(() => {
+      
+          // Add resize and scroll event listeners to update position
+          const updatePosition = () => {
+            if (isVisible) {
               showTooltip();
-            }, this.getDelay(targetEl));
-            
-            // Hide tooltip after a short delay
-            setTimeout(() => {
-              hideTooltip();
-            }, 3000); // Auto-hide after 3 seconds on touch devices
-          }, { passive: false });
+            }
+          };
+      
+          window.addEventListener('resize', updatePosition);
+          window.addEventListener('scroll', updatePosition);
+      
+          // Store event cleanup function on the element
+          targetEl._tooltipCleanup = () => {
+            window.removeEventListener('resize', updatePosition);
+            window.removeEventListener('scroll', updatePosition);
+            if (observer) {
+              observer.disconnect();
+            }
+          };
         };
       
         // Expose as global function
@@ -293,14 +287,14 @@ if(!isMobileTooltip){
             const tooltipId = selector.getAttribute('data-tooltip-id');
             if (tooltipId) {
               const tooltipEl = document.getElementById(tooltipId);
-              if (tooltipEl) {
-                // Cleanup any observers
-                if (tooltipEl._mutationObserver) {
-                  tooltipEl._mutationObserver.disconnect();
-                }
-                tooltipEl.remove();
-              }
+              if (tooltipEl) tooltipEl.remove();
               selector.removeAttribute('data-tooltip-id');
+              
+              // Clean up event listeners
+              if (selector._tooltipCleanup) {
+                selector._tooltipCleanup();
+                delete selector._tooltipCleanup;
+              }
             }
             return;
           }
@@ -310,7 +304,8 @@ if(!isMobileTooltip){
       
           return selector;
         };
-      })();      
+      })();
+            
 };
 /*DropMenu*/
 function materialEnter(t,e,i){t.style.display="block",t.style.opacity="0",t.style.transform="scale(0.8)",t.style.transition=`transform ${e}ms cubic-bezier(0.4, 0.0, 0.2, 1), opacity ${e}ms cubic-bezier(0.4, 0.0, 0.2, 1)`,t.offsetWidth,requestAnimationFrame(()=>{t.style.opacity="1",t.style.transform="scale(1)"}),setTimeout(()=>{t.style.transition="","function"==typeof i&&i()},e+20)}function materialExit(t,e,i){t.style.transition=`transform ${e}ms cubic-bezier(0.4, 0.0, 0.2, 1), opacity ${e}ms cubic-bezier(0.4, 0.0, 0.2, 1)`,t.style.opacity="0",t.style.transform="scale(0.8)",setTimeout(()=>{t.style.display="none",t.style.transition="","function"==typeof i&&i()},e)}function initDropdown(t,e={}){if("open"===e)return t.forEach(t=>{let e=new CustomEvent("open");t.dispatchEvent(e)}),!1;if("close"===e)return t.forEach(t=>{let e=new CustomEvent("close");t.dispatchEvent(e)}),!1;let i={inDuration:100,outDuration:100,constrainWidth:!1,hover:!1,gutter:0,belowOrigin:!0,alignment:"rtl"===BlogDirection?"right":"left",stopPropagation:!1};t.forEach(t=>{let n=Object.assign({},i,e),o=!1,s=t.getAttribute("data-target"),a=document.getElementById(s);function r(){void 0!==t.dataset.induration&&(n.inDuration=parseInt(t.dataset.induration)),void 0!==t.dataset.outduration&&(n.outDuration=parseInt(t.dataset.outduration)),void 0!==t.dataset.constrainwidth&&(n.constrainWidth="true"===t.dataset.constrainwidth),void 0!==t.dataset.hover&&(n.hover="true"===t.dataset.hover),void 0!==t.dataset.gutter&&(n.gutter=parseInt(t.dataset.gutter)),void 0!==t.dataset.beloworigin&&(n.belowOrigin="true"===t.dataset.beloworigin),void 0!==t.dataset.alignment&&(n.alignment=t.dataset.alignment),void 0!==t.dataset.stoppropagation&&(n.stopPropagation="true"===t.dataset.stoppropagation)}function l(e){"focus"===e&&(o=!0),r(),a.classList.add("active"),t.classList.add("active");let i=t.getBoundingClientRect().width;!0===n.constrainWidth&&(a.style.width=i+"px"),a.style.display="block",a.style.visibility="hidden",a.style.opacity="0",a.style.transform="scale(0.8)";let s=window.innerWidth,l=window.innerHeight,d=t.clientHeight,p=t.getBoundingClientRect(),u=a.offsetWidth,g=a.offsetHeight,f=n.alignment;"left"===f?p.left+u>s&&(f="right"):"right"===f&&p.right-u<0&&(f="left");let y=0;!0===n.belowOrigin&&(y=d);let $=0,v=t.parentElement;if(v&&v!==document.body&&v.scrollHeight>v.clientHeight&&($=v.scrollTop),p.top+y+g>l){if(p.top+d-g<0){let h=l-p.top-y;a.style.maxHeight=h+"px"}else y||(y+=d),y-=g}a.style.position="absolute",a.style.top=t.offsetTop+y+$+"px","left"===f?(a.style.left="0px",a.style.right="auto",a.style.transformOrigin="top left"):"right"===f?(a.style.right="0px",a.style.left="auto",a.style.transformOrigin="top right"):a.style.transformOrigin="top",a.style.display="none",a.style.visibility="visible",materialEnter(a,n.inDuration,()=>{a.style.height=""}),setTimeout(()=>{document.addEventListener("click",c)},0)}a&&(a.style.display="none",a.style.opacity="0"),r(),a&&t.nextElementSibling!==a&&t.parentNode.insertBefore(a,t.nextElementSibling);let c=function(t){!(t.target.closest("button.sp-btn")||t.target.closest(".sp-btn"))&&(d(),document.removeEventListener("click",c))};function d(){o=!1,materialExit(a,n.outDuration,()=>{a.classList.remove("active"),t.classList.remove("active"),document.removeEventListener("click",c),a.style.maxHeight=""})}if(n.hover){let p=!1;t.removeEventListener("click",clickHandler),t.addEventListener("mouseenter",t=>{!1===p&&(l(),p=!0)}),t.addEventListener("mouseleave",t=>{let e=t.relatedTarget;e&&a.contains(e)||(d(),p=!1)}),a.addEventListener("mouseleave",e=>{let i=e.relatedTarget;i&&t.contains(i)||(d(),p=!1)})}else{let u=function(e){if(!o){if(t!==e.currentTarget||t.classList.contains("active")||e.target.closest(".dropdown-content")){if(t.classList.contains("active")){if(e.target.closest("button.sp-btn")||e.target.closest(".sp-btn"))return;d(),document.removeEventListener("click",c)}}else e.preventDefault(),n.stopPropagation&&e.stopPropagation(),l("click")}};if(a){let g=a.querySelectorAll("button.sp-btn, .sp-btn");g.forEach(t=>{t.addEventListener("click",t=>{})})}t.removeEventListener("click",u),t.addEventListener("click",u)}t.addEventListener("open",t=>{l(t.detail)}),t.addEventListener("close",d)})}NodeList.prototype.dropdown=function(t){return initDropdown(this,t)},HTMLElement.prototype.dropdown=function(t){return initDropdown([this],t)};
