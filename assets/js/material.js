@@ -107,6 +107,7 @@ if(!isMobileTooltip){(function() {
             
             // متغيرات الحالة
             this.isVisible = false;
+            this.isHovering = false; // متغير جديد لتتبع وجود المؤشر على العنصر
             this.targetEl = null;
             this.tooltipEl = null;
             this.backdropEl = null;
@@ -123,6 +124,7 @@ if(!isMobileTooltip){(function() {
             this.hideTooltip = this.hideTooltip.bind(this);
             this.onPointerEnter = this.onPointerEnter.bind(this);
             this.onPointerLeave = this.onPointerLeave.bind(this);
+            this.repositionTooltip = this.repositionTooltip.bind(this);
         }
 
         init(element) {
@@ -218,6 +220,8 @@ if(!isMobileTooltip){(function() {
         }
 
         onPointerEnter(e) {
+            this.isHovering = true;
+            
             if (this.hoverTimeout) {
                 clearTimeout(this.hoverTimeout);
             }
@@ -228,6 +232,8 @@ if(!isMobileTooltip){(function() {
         }
 
         onPointerLeave() {
+            this.isHovering = false;
+            
             if (this.hoverTimeout) {
                 clearTimeout(this.hoverTimeout);
                 this.hoverTimeout = null;
@@ -307,6 +313,26 @@ if(!isMobileTooltip){(function() {
             this.isVisible = false;
         }
 
+        // دالة جديدة لإعادة تحديد موضع التلميح فقط
+        repositionTooltip() {
+            if (!this.isVisible) return;
+            
+            const position = this.getPosition();
+            const { left, top, translateX, translateY } = adjustPosition(
+                this.targetEl, 
+                this.tooltipEl, 
+                this.backdropEl, 
+                position
+            );
+            
+            this.tooltipEl.style.left = `${left}px`;
+            this.tooltipEl.style.top = `${top}px`;
+            this.tooltipEl.style.transform = `translateY(${translateY}) translateX(${translateX})`;
+            
+            // إعادة تطبيق أنماط الخلفية
+            applyStyles(this.backdropEl, this.currentBackdropStyles);
+        }
+
         handleScroll() {
             if (!this.isVisible) return;
             
@@ -315,14 +341,33 @@ if(!isMobileTooltip){(function() {
                 
                 // استخدام RAF للتحكم في التحديثات
                 this.animationFrame = requestAnimationFrame(() => {
-                    this.hideTooltip();
+                    // إذا كان المؤشر على العنصر، نعيد تحديد موضع التلميح فقط بدلاً من إخفائه
+                    if (this.isHovering) {
+                        this.repositionTooltip();
+                    } else {
+                        this.hideTooltip();
+                    }
                     this.ticking = false;
                 });
             }
         }
 
         handleResize() {
-            this.handleScroll(); // نفس السلوك مثل التمرير
+            if (!this.isVisible) return;
+            
+            if (!this.ticking) {
+                this.ticking = true;
+                
+                this.animationFrame = requestAnimationFrame(() => {
+                    // إذا كان المؤشر على العنصر، نعيد تحديد موضع التلميح فقط بدلاً من إخفائه
+                    if (this.isHovering) {
+                        this.repositionTooltip();
+                    } else {
+                        this.hideTooltip();
+                    }
+                    this.ticking = false;
+                });
+            }
         }
 
         remove() {
