@@ -1,5 +1,269 @@
 // Vanilla JS Tooltip Plugin
-if(!isMobileTooltip){!function(){function t(t,e,i,o){let n=t.getBoundingClientRect(),s=e.getBoundingClientRect(),l=i.getBoundingClientRect(),r=window.innerWidth,a=window.innerHeight,p=0,d=0,h="0px",g="0px";switch(o){case"top":d=n.top-s.height,p=n.left+n.width/2-s.width/2,g="-10px",i.style.cssText=`bottom:0;left:0;border-radius:14px 14px 0 0;transform-origin:50% 100%;margin-top:${s.height}px;margin-left:${s.width/2-l.width/2}px;`;break;case"left":d=n.top+n.height/2-s.height/2,p=n.left-s.width,h="-10px",i.style.cssText=`top:-7px;right:0;width:14px;height:14px;border-radius:14px 0 0 14px;transform-origin:95% 50%;margin-top:${s.height/2}px;margin-left:${s.width}px;`;break;case"right":d=n.top+n.height/2-s.height/2,p=n.left+n.width,h="+10px",i.style.cssText=`top:-7px;left:0;width:14px;height:14px;border-radius:0 14px 14px 0;transform-origin:5% 50%;margin-top:${s.height/2}px;margin-left:0px;`;break;default:d=n.top+n.height,p=n.left+n.width/2-s.width/2,g="+10px",i.style.cssText=`top:0;left:0;margin-left:${s.width/2-l.width/2}px;`}return p<0&&(p=4),p+s.width>r&&(p-=p+s.width-r+4),d<0&&(d=4),d+s.height>a&&(d-=d+s.height-a+4),{left:p,top:d,translateX:h,translateY:g}}function e(t){this.defaultOptions={delay:350,tooltip:"",position:"bottom",html:!1},this.options=Object.assign({},this.defaultOptions,t)}e.prototype.init=function(t){if(t.getAttribute("data-tooltip-id")){let e=document.getElementById(t.getAttribute("data-tooltip-id"));e&&e.remove()}let i="flaspeedtooltip-"+Math.random().toString(16).slice(2,14);t.setAttribute("data-tooltip-id",i);let o=document.createElement("div");o.className="material-tooltip",o.id=i,o.style.margin="0";let n=document.createElement("span"),s=this.getTooltipText(t);this.isHtml(t)?n.innerHTML=s:n.textContent=s;let l=document.createElement("div");return l.className="backdrop",l.style.margin="0",o.appendChild(n),o.appendChild(l),document.body.appendChild(o),this.attachEvents(t,o,l),o},e.prototype.getTooltipText=function(t){return t.getAttribute("data-tooltip")||this.options.tooltip||t.getAttribute("title")||""},e.prototype.isHtml=function(t){return"true"===t.getAttribute("data-html")||this.options.html},e.prototype.getPosition=function(t){return t.getAttribute("data-position")||this.options.position},e.prototype.getDelay=function(t){let e=t.getAttribute("data-delay");return null!==e&&""!==e?parseInt(e):this.options.delay},e.prototype.attachEvents=function(e,i,o){let n,s=!1,l=()=>{let n=this.getPosition(e);i.style.position="fixed";let{left:l,top:r,translateX:a,translateY:p}=t(e,i,o,n);i.style.visibility="visible",i.style.left=`${l}px`,i.style.top=`${r}px`,o.style.visibility="visible";let d=i.offsetWidth,h=i.offsetHeight,g=o.offsetWidth,f=o.offsetHeight;i.style.transition="transform 0.35s, opacity 0.3s",o.style.transition="transform 0.3s, opacity 0.3s",i.style.transform=`translateY(${p}) translateX(${a})`,i.style.opacity="1",o.style.transform=`scale(${Math.max(Math.SQRT2*d/g,Math.SQRT2*h/f)})`,o.style.opacity="1",s=!0},r=()=>{i.style.transform="translateY(0) translateX(0)",i.style.opacity="0",o.style.transform="scale(1)",o.style.opacity="0",setTimeout(()=>{s||(i.style.visibility="hidden",o.style.visibility="hidden"),s=!1},225)},a=()=>{if(s){let n=this.getPosition(e),{left:l,top:r,translateX:a,translateY:p}=t(e,i,o,n);i.style.left=`${l}px`,i.style.top=`${r}px`}};e.addEventListener("pointerenter",t=>{n=setTimeout(()=>{l()},this.getDelay(e))}),e.addEventListener("pointerleave",()=>{clearTimeout(n),setTimeout(r,225)}),window.addEventListener("scroll",a),window.addEventListener("resize",a)},window.VanillaTooltip=function(t,i){if("remove"===i){let o=t.getAttribute("data-tooltip-id");if(o){let n=document.getElementById(o);n&&n.remove(),t.removeAttribute("data-tooltip-id")}return}let s=new e(i);return s.init(t),t}}();};
+if(!isMobileTooltip){(function() {
+    // Utility function to generate unique ID
+    function generateGUID() {
+        return 'flaspeedtooltip-' + Math.random().toString(16).slice(2, 14);
+    }
+
+    // Utility function to adjust tooltip position
+    function adjustPosition(targetEl, tooltipEl, backdropEl, position) {
+        const targetRect = targetEl.getBoundingClientRect();
+        const tooltipRect = tooltipEl.getBoundingClientRect();
+        const backdropRect = backdropEl.getBoundingClientRect();
+        const windowWidth = window.innerWidth;
+        const windowHeight = window.innerHeight;
+
+        // No need for scroll adjustments with fixed positioning
+        let left = 0, top = 0;
+        let translateX = '0px', translateY = '0px';
+        let backdropStyle = '';
+
+        switch(position) {
+            case 'top':
+                top = targetRect.top - tooltipRect.height;
+                left = targetRect.left + targetRect.width / 2 - tooltipRect.width / 2;
+                translateY = '-10px';
+                backdropStyle = `
+                    bottom: 0;
+                    left: 0;
+                    border-radius: 14px 14px 0 0;
+                    transform-origin: 50% 100%;
+                    margin-top: ${tooltipRect.height}px;
+                    margin-left: ${tooltipRect.width / 2 - backdropRect.width / 2}px;
+                `;
+                break;
+            case 'left':
+                top = targetRect.top + targetRect.height / 2 - tooltipRect.height / 2;
+                left = targetRect.left - tooltipRect.width;
+                translateX = '-10px';
+                backdropStyle = `
+                    top: -7px;
+                    right: 0;
+                    width: 14px;
+                    height: 14px;
+                    border-radius: 14px 0 0 14px;
+                    transform-origin: 95% 50%;
+                    margin-top: ${tooltipRect.height / 2}px;
+                    margin-left: ${tooltipRect.width}px;
+                `;
+                break;
+            case 'right':
+                top = targetRect.top + targetRect.height / 2 - tooltipRect.height / 2;
+                left = targetRect.left + targetRect.width;
+                translateX = '+10px';
+                backdropStyle = `
+                    top: -7px;
+                    left: 0;
+                    width: 14px;
+                    height: 14px;
+                    border-radius: 0 14px 14px 0;
+                    transform-origin: 5% 50%;
+                    margin-top: ${tooltipRect.height / 2}px;
+                    margin-left: 0px;
+                `;
+                break;
+            default: // bottom
+                top = targetRect.top + targetRect.height;
+                left = targetRect.left + targetRect.width / 2 - tooltipRect.width / 2;
+                translateY = '+10px';
+                backdropStyle = `
+                    top: 0;
+                    left: 0;
+                    margin-left: ${tooltipRect.width / 2 - backdropRect.width / 2}px;
+                `;
+        }
+
+        // Boundary checks - now just using viewport boundaries
+        if (left < 0) left = 4;
+        if (left + tooltipRect.width > windowWidth) left -= (left + tooltipRect.width - windowWidth + 4);
+        if (top < 0) top = 4;
+        if (top + tooltipRect.height > windowHeight) top -= (top + tooltipRect.height - windowHeight + 4);
+
+        // Store the position-specific backdrop style in a data attribute
+        tooltipEl.setAttribute('data-backdrop-style', backdropStyle);
+        backdropEl.style.cssText = backdropStyle;
+
+        return { left, top, translateX, translateY };
+    }
+
+    // Tooltip initialization and methods
+    function Tooltip(options) {
+        this.defaultOptions = {
+            delay: 350,
+            tooltip: '',
+            position: 'bottom',
+            html: false
+        };
+        this.options = Object.assign({}, this.defaultOptions, options);
+    }
+
+    Tooltip.prototype.init = function(element) {
+        if (element.getAttribute('data-tooltip-id')) {
+            const existingTooltip = document.getElementById(element.getAttribute('data-tooltip-id'));
+            if (existingTooltip) existingTooltip.remove();
+        }
+
+        const tooltipId = generateGUID();
+        element.setAttribute('data-tooltip-id', tooltipId);
+
+        // Create tooltip elements
+        const tooltipEl = document.createElement('div');
+        tooltipEl.className = 'material-tooltip';
+        tooltipEl.id = tooltipId;
+        tooltipEl.style.margin = '0'; // Remove any default margins
+
+        const tooltipContentEl = document.createElement('span');
+        const tooltipText = this.getTooltipText(element);
+
+        if (this.isHtml(element)) {
+            tooltipContentEl.innerHTML = tooltipText;
+        } else {
+            tooltipContentEl.textContent = tooltipText;
+        }
+
+        const backdropEl = document.createElement('div');
+        backdropEl.className = 'backdrop';
+        backdropEl.style.margin = '0'; // Remove any default margins
+
+        tooltipEl.appendChild(tooltipContentEl);
+        tooltipEl.appendChild(backdropEl);
+        document.body.appendChild(tooltipEl);
+
+        this.attachEvents(element, tooltipEl, backdropEl);
+        return tooltipEl;
+    };
+
+    Tooltip.prototype.getTooltipText = function(element) {
+        return element.getAttribute('data-tooltip') || 
+               this.options.tooltip || 
+               element.getAttribute('title') || '';
+    };
+
+    Tooltip.prototype.isHtml = function(element) {
+        return element.getAttribute('data-html') === 'true' || this.options.html;
+    };
+
+    Tooltip.prototype.getPosition = function(element) {
+        return element.getAttribute('data-position') || this.options.position;
+    };
+
+    Tooltip.prototype.getDelay = function(element) {
+        const delay = element.getAttribute('data-delay');
+        return delay !== null && delay !== '' ? parseInt(delay) : this.options.delay;
+    };
+
+    Tooltip.prototype.attachEvents = function(targetEl, tooltipEl, backdropEl) {
+        let hoverTimeout;
+        let isVisible = false;
+        let currentPosition = '';
+
+        const showTooltip = () => {
+            const position = this.getPosition(targetEl);
+            currentPosition = position;
+            
+            // Update tooltipEl to use fixed positioning before calculations
+            tooltipEl.style.position = 'fixed';
+            
+            const { left, top, translateX, translateY } = adjustPosition(targetEl, tooltipEl, backdropEl, position);
+
+            tooltipEl.style.visibility = 'visible';
+            tooltipEl.style.left = `${left}px`;
+            tooltipEl.style.top = `${top}px`;
+            backdropEl.style.visibility = 'visible';
+
+            // Animation calculations
+            const tooltipWidth = tooltipEl.offsetWidth;
+            const tooltipHeight = tooltipEl.offsetHeight;
+            const backdropWidth = backdropEl.offsetWidth;
+            const backdropHeight = backdropEl.offsetHeight;
+
+            const scaleX = Math.SQRT2 * tooltipWidth / backdropWidth;
+            const scaleY = Math.SQRT2 * tooltipHeight / backdropHeight;
+            const scale = Math.max(scaleX, scaleY);
+
+            // Apply animations
+            tooltipEl.style.transition = 'transform 0.35s, opacity 0.3s';
+            backdropEl.style.transition = 'transform 0.3s, opacity 0.3s';
+
+            tooltipEl.style.transform = `translateY(${translateY}) translateX(${translateX})`;
+            tooltipEl.style.opacity = '1';
+
+            backdropEl.style.transform = `scale(${scale})`;
+            backdropEl.style.opacity = '1';
+
+            isVisible = true;
+        };
+
+        const hideTooltip = () => {
+            tooltipEl.style.transform = 'translateY(0) translateX(0)';
+            tooltipEl.style.opacity = '0';
+            backdropEl.style.transform = 'scale(1)';
+            backdropEl.style.opacity = '0';
+
+            setTimeout(() => {
+                if (!isVisible) {
+                    tooltipEl.style.visibility = 'hidden';
+                    backdropEl.style.visibility = 'hidden';
+                }
+                isVisible = false;
+            }, 225);
+        };
+
+        // Handle repositioning on scroll when using fixed positioning
+        const repositionTooltip = () => {
+            if (isVisible) {
+                const position = currentPosition;
+                const { left, top, translateX, translateY } = adjustPosition(targetEl, tooltipEl, backdropEl, position);
+                
+                tooltipEl.style.left = `${left}px`;
+                tooltipEl.style.top = `${top}px`;
+                
+                // Ensure backdrop style is preserved during scroll
+                const backdropStyle = tooltipEl.getAttribute('data-backdrop-style');
+                if (backdropStyle) {
+                    backdropEl.style.cssText = backdropStyle;
+                    // Preserve visibility and any animation properties
+                    backdropEl.style.visibility = 'visible';
+                    backdropEl.style.opacity = '1';
+                }
+            }
+        };
+
+        targetEl.addEventListener('pointerenter', (e) => {
+            hoverTimeout = setTimeout(() => {
+                showTooltip();
+            }, this.getDelay(targetEl));
+        });
+
+        targetEl.addEventListener('pointerleave', () => {
+            clearTimeout(hoverTimeout);
+            setTimeout(hideTooltip, 225);
+        });
+
+        // Add scroll event listener to reposition tooltip when using fixed positioning
+        window.addEventListener('scroll', repositionTooltip, { passive: true });
+        window.addEventListener('resize', repositionTooltip, { passive: true });
+    };
+
+    // Expose as global function
+    window.VanillaTooltip = function(selector, options) {
+        if (options === 'remove') {
+            const tooltipId = selector.getAttribute('data-tooltip-id');
+            if (tooltipId) {
+                const tooltipEl = document.getElementById(tooltipId);
+                if (tooltipEl) tooltipEl.remove();
+                selector.removeAttribute('data-tooltip-id');
+            }
+
+            return;
+        }
+
+        const tooltip = new Tooltip(options);
+        tooltip.init(selector);
+
+        return selector;
+    };
+})();};
 /*DropMenu*/
 function materialEnter(t,e,i){t.style.display="block",t.style.opacity="0",t.style.transform="scale(0.8)",t.style.transition=`transform ${e}ms cubic-bezier(0.4, 0.0, 0.2, 1), opacity ${e}ms cubic-bezier(0.4, 0.0, 0.2, 1)`,t.offsetWidth,requestAnimationFrame(()=>{t.style.opacity="1",t.style.transform="scale(1)"}),setTimeout(()=>{t.style.transition="","function"==typeof i&&i()},e+20)}function materialExit(t,e,i){t.style.transition=`transform ${e}ms cubic-bezier(0.4, 0.0, 0.2, 1), opacity ${e}ms cubic-bezier(0.4, 0.0, 0.2, 1)`,t.style.opacity="0",t.style.transform="scale(0.8)",setTimeout(()=>{t.style.display="none",t.style.transition="","function"==typeof i&&i()},e)}function initDropdown(t,e={}){if("open"===e)return t.forEach(t=>{let e=new CustomEvent("open");t.dispatchEvent(e)}),!1;if("close"===e)return t.forEach(t=>{let e=new CustomEvent("close");t.dispatchEvent(e)}),!1;let i={inDuration:100,outDuration:100,constrainWidth:!1,hover:!1,gutter:0,belowOrigin:!0,alignment:"rtl"===BlogDirection?"right":"left",stopPropagation:!1};t.forEach(t=>{let n=Object.assign({},i,e),o=!1,s=t.getAttribute("data-target"),a=document.getElementById(s);function r(){void 0!==t.dataset.induration&&(n.inDuration=parseInt(t.dataset.induration)),void 0!==t.dataset.outduration&&(n.outDuration=parseInt(t.dataset.outduration)),void 0!==t.dataset.constrainwidth&&(n.constrainWidth="true"===t.dataset.constrainwidth),void 0!==t.dataset.hover&&(n.hover="true"===t.dataset.hover),void 0!==t.dataset.gutter&&(n.gutter=parseInt(t.dataset.gutter)),void 0!==t.dataset.beloworigin&&(n.belowOrigin="true"===t.dataset.beloworigin),void 0!==t.dataset.alignment&&(n.alignment=t.dataset.alignment),void 0!==t.dataset.stoppropagation&&(n.stopPropagation="true"===t.dataset.stoppropagation)}function l(e){"focus"===e&&(o=!0),r(),a.classList.add("active"),t.classList.add("active");let i=t.getBoundingClientRect().width;!0===n.constrainWidth&&(a.style.width=i+"px"),a.style.display="block",a.style.visibility="hidden",a.style.opacity="0",a.style.transform="scale(0.8)";let s=window.innerWidth,l=window.innerHeight,d=t.clientHeight,p=t.getBoundingClientRect(),u=a.offsetWidth,g=a.offsetHeight,f=n.alignment;"left"===f?p.left+u>s&&(f="right"):"right"===f&&p.right-u<0&&(f="left");let y=0;!0===n.belowOrigin&&(y=d);let $=0,v=t.parentElement;if(v&&v!==document.body&&v.scrollHeight>v.clientHeight&&($=v.scrollTop),p.top+y+g>l){if(p.top+d-g<0){let h=l-p.top-y;a.style.maxHeight=h+"px"}else y||(y+=d),y-=g}a.style.position="absolute",a.style.top=t.offsetTop+y+$+"px","left"===f?(a.style.left="0px",a.style.right="auto",a.style.transformOrigin="top left"):"right"===f?(a.style.right="0px",a.style.left="auto",a.style.transformOrigin="top right"):a.style.transformOrigin="top",a.style.display="none",a.style.visibility="visible",materialEnter(a,n.inDuration,()=>{a.style.height=""}),setTimeout(()=>{document.addEventListener("click",c)},0)}a&&(a.style.display="none",a.style.opacity="0"),r(),a&&t.nextElementSibling!==a&&t.parentNode.insertBefore(a,t.nextElementSibling);let c=function(t){!(t.target.closest("button.sp-btn")||t.target.closest(".sp-btn"))&&(d(),document.removeEventListener("click",c))};function d(){o=!1,materialExit(a,n.outDuration,()=>{a.classList.remove("active"),t.classList.remove("active"),document.removeEventListener("click",c),a.style.maxHeight=""})}if(n.hover){let p=!1;t.removeEventListener("click",clickHandler),t.addEventListener("mouseenter",t=>{!1===p&&(l(),p=!0)}),t.addEventListener("mouseleave",t=>{let e=t.relatedTarget;e&&a.contains(e)||(d(),p=!1)}),a.addEventListener("mouseleave",e=>{let i=e.relatedTarget;i&&t.contains(i)||(d(),p=!1)})}else{let u=function(e){if(!o){if(t!==e.currentTarget||t.classList.contains("active")||e.target.closest(".dropdown-content")){if(t.classList.contains("active")){if(e.target.closest("button.sp-btn")||e.target.closest(".sp-btn"))return;d(),document.removeEventListener("click",c)}}else e.preventDefault(),n.stopPropagation&&e.stopPropagation(),l("click")}};if(a){let g=a.querySelectorAll("button.sp-btn, .sp-btn");g.forEach(t=>{t.addEventListener("click",t=>{})})}t.removeEventListener("click",u),t.addEventListener("click",u)}t.addEventListener("open",t=>{l(t.detail)}),t.addEventListener("close",d)})}NodeList.prototype.dropdown=function(t){return initDropdown(this,t)},HTMLElement.prototype.dropdown=function(t){return initDropdown([this],t)};
 /*Drawer*/
