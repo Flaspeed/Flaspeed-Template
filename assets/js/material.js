@@ -4,6 +4,7 @@ if(!isMobileTooltip){(function() {
     const ANIMATION_DURATION = 300; // بالمللي ثانية
     const ANIMATION_HIDE_DELAY = 225; // بالمللي ثانية
     const TOOLTIP_OFFSET = 10; // بالبكسل
+    const RENDER_THROTTLE = 16; // حوالي 60 إطار في الثانية
 
     // دالة مساعدة لإنشاء معرف فريد
     function generateGUID() {
@@ -86,15 +87,6 @@ if(!isMobileTooltip){(function() {
         return { left, top, translateX, translateY, backdropStyles };
     }
 
-    // دالة مساعدة لحساب موضع التلميح
-    function adjustPosition(targetEl, tooltipEl, backdropEl, position) {
-        const targetRect = targetEl.getBoundingClientRect();
-        const tooltipRect = tooltipEl.getBoundingClientRect();
-        const backdropRect = backdropEl.getBoundingClientRect();
-        
-        return calculatePosition(targetRect, tooltipRect, backdropRect, position);
-    }
-
     // كلاس التلميح
     class Tooltip {
         constructor(options = {}) {
@@ -107,24 +99,34 @@ if(!isMobileTooltip){(function() {
             
             // متغيرات الحالة
             this.isVisible = false;
-            this.isHovering = false; // متغير جديد لتتبع وجود المؤشر على العنصر
+            this.isHovering = false;
             this.targetEl = null;
             this.tooltipEl = null;
             this.backdropEl = null;
             this.hoverTimeout = null;
             this.currentBackdropStyles = {};
-            this.scrolling = false;
-            this.ticking = false;
+            this.lastUpdateTime = 0;
+            this.needsUpdate = false;
             this.animationFrame = null;
             
+            // تخزين مؤقت للقياسات
+            this.cachedRects = {
+                target: null,
+                tooltip: null,
+                backdrop: null,
+                lastUpdated: 0
+            };
+            
             // ربط الدوال بالسياق الحالي
-            this.handleScroll = this.handleScroll.bind(this);
-            this.handleResize = this.handleResize.bind(this);
+            this.updateLoop = this.updateLoop.bind(this);
             this.showTooltip = this.showTooltip.bind(this);
             this.hideTooltip = this.hideTooltip.bind(this);
             this.onPointerEnter = this.onPointerEnter.bind(this);
             this.onPointerLeave = this.onPointerLeave.bind(this);
-            this.repositionTooltip = this.repositionTooltip.bind(this);
+            this.onViewportChange = this.onViewportChange.bind(this);
+            
+            // بدء حلقة التحديث
+            this.startUpdateLoop();
         }
 
         init(element) {
@@ -197,16 +199,16 @@ if(!isMobileTooltip){(function() {
             this.targetEl.addEventListener('pointerenter', this.onPointerEnter);
             this.targetEl.addEventListener('pointerleave', this.onPointerLeave);
             
-            // مستمعي الأحداث للتمرير والتحجيم
-            window.addEventListener('scroll', this.handleScroll, { passive: true });
-            window.addEventListener('resize', this.handleResize, { passive: true });
+            // مستمع واحد للتغييرات في العرض
+            window.addEventListener('scroll', this.onViewportChange, { passive: true });
+            window.addEventListener('resize', this.onViewportChange, { passive: true });
         }
         
         detachEvents() {
             this.targetEl.removeEventListener('pointerenter', this.onPointerEnter);
             this.targetEl.removeEventListener('pointerleave', this.onPointerLeave);
-            window.removeEventListener('scroll', this.handleScroll);
-            window.removeEventListener('resize', this.handleResize);
+            window.removeEventListener('scroll', this.onViewportChange);
+            window.removeEventListener('resize', this.onViewportChange);
             
             if (this.hoverTimeout) {
                 clearTimeout(this.hoverTimeout);
@@ -217,6 +219,64 @@ if(!isMobileTooltip){(function() {
                 cancelAnimationFrame(this.animationFrame);
                 this.animationFrame = null;
             }
+        }
+
+        startUpdateLoop() {
+            // بدء حلقة التحديث المستمرة
+            this.updateLoop();
+        }
+
+        updateLoop() {
+            // التحقق مما إذا يحتاج التلميح إلى تحديث
+            if (this.needsUpdate && this.isVisible) {
+                const now = performance.now();
+                
+                // تنفيذ التحديث فقط إذا مر وقت كافٍ منذ آخر تحديث
+                if (now - this.lastUpdateTime > RENDER_THROTTLE) {
+                    this.updateTooltipPosition();
+                    this.lastUpdateTime = now;
+                    this.needsUpdate = false;
+                }
+            }
+            
+            // استدعاء الحلقة مرة أخرى في الإطار التالي
+            this.animationFrame = requestAnimationFrame(this.updateLoop);
+        }
+
+        // طلب تحديث في الإطار القادم
+        requestUpdate() {
+            this.needsUpdate = true;
+        }
+
+        onViewportChange() {
+            // إلغاء صلاحية التخزين المؤقت
+            this.invalidateCache();
+            
+            // طلب تحديث الموضع في الإطار القادم
+            this.requestUpdate();
+        }
+
+        invalidateCache() {
+            this.cachedRects.lastUpdated = 0;
+        }
+
+        // الحصول على المستطيلات المحيطة مع التخزين المؤقت
+        getRectsWithCaching() {
+            const now = performance.now();
+            
+            // إذا كانت القياسات قديمة أو غير موجودة، يتم تحديثها
+            if (now - this.cachedRects.lastUpdated > 100 || !this.cachedRects.target) {
+                this.cachedRects.target = this.targetEl.getBoundingClientRect();
+                this.cachedRects.tooltip = this.tooltipEl.getBoundingClientRect();
+                this.cachedRects.backdrop = this.backdropEl.getBoundingClientRect();
+                this.cachedRects.lastUpdated = now;
+            }
+            
+            return {
+                targetRect: this.cachedRects.target,
+                tooltipRect: this.cachedRects.tooltip,
+                backdropRect: this.cachedRects.backdrop
+            };
         }
 
         onPointerEnter(e) {
@@ -243,12 +303,15 @@ if(!isMobileTooltip){(function() {
         }
 
         showTooltip() {
+            // الحصول على القياسات مع التخزين المؤقت
+            const { targetRect, tooltipRect, backdropRect } = this.getRectsWithCaching();
+            
             // حساب وتطبيق الموضع
             const position = this.getPosition();
-            const { left, top, translateX, translateY, backdropStyles } = adjustPosition(
-                this.targetEl, 
-                this.tooltipEl, 
-                this.backdropEl, 
+            const { left, top, translateX, translateY, backdropStyles } = calculatePosition(
+                targetRect, 
+                tooltipRect, 
+                backdropRect, 
                 position
             );
             
@@ -265,10 +328,10 @@ if(!isMobileTooltip){(function() {
             applyStyles(this.backdropEl, backdropStyles);
 
             // حسابات الرسوم المتحركة
-            const tooltipWidth = this.tooltipEl.offsetWidth;
-            const tooltipHeight = this.tooltipEl.offsetHeight;
-            const backdropWidth = this.backdropEl.offsetWidth;
-            const backdropHeight = this.backdropEl.offsetHeight;
+            const tooltipWidth = tooltipRect.width;
+            const tooltipHeight = tooltipRect.height;
+            const backdropWidth = backdropRect.width;
+            const backdropHeight = backdropRect.height;
 
             const scaleX = Math.SQRT2 * tooltipWidth / backdropWidth;
             const scaleY = Math.SQRT2 * tooltipHeight / backdropHeight;
@@ -279,7 +342,7 @@ if(!isMobileTooltip){(function() {
             this.backdropEl.style.transition = `transform ${ANIMATION_DURATION / 1000}s, opacity ${ANIMATION_DURATION / 1000}s`;
 
             // استخدام RAF لتحسين الأداء
-            this.animationFrame = requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
                 this.tooltipEl.style.transform = `translateY(${translateY}) translateX(${translateX})`;
                 this.tooltipEl.style.opacity = '1';
 
@@ -287,22 +350,23 @@ if(!isMobileTooltip){(function() {
                 this.backdropEl.style.opacity = '1';
                 
                 this.isVisible = true;
+                
+                // إلغاء صلاحية التخزين المؤقت بعد التحول لأن القياسات ستكون مختلفة
+                this.invalidateCache();
             });
         }
 
         hideTooltip() {
-            if (this.animationFrame) {
-                cancelAnimationFrame(this.animationFrame);
-            }
-            
-            this.animationFrame = requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                if (!this.isVisible) return;
+                
                 this.tooltipEl.style.transform = 'translateY(0) translateX(0)';
                 this.tooltipEl.style.opacity = '0';
                 this.backdropEl.style.transform = 'scale(1)';
                 this.backdropEl.style.opacity = '0';
 
                 setTimeout(() => {
-                    if (!this.isVisible) return;
+                    if (this.isHovering) return; // التحقق مرة أخرى في حالة رجوع المؤشر
                     
                     this.tooltipEl.style.visibility = 'hidden';
                     this.backdropEl.style.visibility = 'hidden';
@@ -313,61 +377,27 @@ if(!isMobileTooltip){(function() {
             this.isVisible = false;
         }
 
-        // دالة جديدة لإعادة تحديد موضع التلميح فقط
-        repositionTooltip() {
-            if (!this.isVisible) return;
+        updateTooltipPosition() {
+            if (!this.isVisible || !this.targetEl) return;
+            
+            // الحصول على القياسات المحدثة
+            const { targetRect, tooltipRect, backdropRect } = this.getRectsWithCaching();
             
             const position = this.getPosition();
-            const { left, top, translateX, translateY } = adjustPosition(
-                this.targetEl, 
-                this.tooltipEl, 
-                this.backdropEl, 
+            const { left, top, translateX, translateY } = calculatePosition(
+                targetRect, 
+                tooltipRect, 
+                backdropRect, 
                 position
             );
             
+            // تحديث الموضع بسلاسة
             this.tooltipEl.style.left = `${left}px`;
             this.tooltipEl.style.top = `${top}px`;
             this.tooltipEl.style.transform = `translateY(${translateY}) translateX(${translateX})`;
             
             // إعادة تطبيق أنماط الخلفية
             applyStyles(this.backdropEl, this.currentBackdropStyles);
-        }
-
-        handleScroll() {
-            if (!this.isVisible) return;
-            
-            if (!this.ticking) {
-                this.ticking = true;
-                
-                // استخدام RAF للتحكم في التحديثات
-                this.animationFrame = requestAnimationFrame(() => {
-                    // إذا كان المؤشر على العنصر، نعيد تحديد موضع التلميح فقط بدلاً من إخفائه
-                    if (this.isHovering) {
-                        this.repositionTooltip();
-                    } else {
-                        this.hideTooltip();
-                    }
-                    this.ticking = false;
-                });
-            }
-        }
-
-        handleResize() {
-            if (!this.isVisible) return;
-            
-            if (!this.ticking) {
-                this.ticking = true;
-                
-                this.animationFrame = requestAnimationFrame(() => {
-                    // إذا كان المؤشر على العنصر، نعيد تحديد موضع التلميح فقط بدلاً من إخفائه
-                    if (this.isHovering) {
-                        this.repositionTooltip();
-                    } else {
-                        this.hideTooltip();
-                    }
-                    this.ticking = false;
-                });
-            }
         }
 
         remove() {
@@ -379,6 +409,12 @@ if(!isMobileTooltip){(function() {
             
             if (this.targetEl) {
                 this.targetEl.removeAttribute('data-tooltip-id');
+            }
+            
+            // إلغاء حلقة التحديث
+            if (this.animationFrame) {
+                cancelAnimationFrame(this.animationFrame);
+                this.animationFrame = null;
             }
             
             this.targetEl = null;
