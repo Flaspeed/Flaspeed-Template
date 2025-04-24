@@ -159,6 +159,7 @@ if(!isMobileTooltip){(function() {
         let hoverTimeout;
         let isVisible = false;
         let currentBackdropStyles = {}; // Store current backdrop styles
+        let lastScrollPosition = window.scrollY; // Store last scroll position
     
         const showTooltip = () => {
             const position = this.getPosition(targetEl);
@@ -200,6 +201,9 @@ if(!isMobileTooltip){(function() {
             backdropEl.style.opacity = '1';
     
             isVisible = true;
+            
+            // Update last scroll position
+            lastScrollPosition = window.scrollY;
         };
     
         const hideTooltip = () => {
@@ -217,18 +221,11 @@ if(!isMobileTooltip){(function() {
             }, 225);
         };
     
-        // Handle repositioning on scroll when using fixed positioning
-        const repositionTooltip = () => {
+        // Handle scroll event
+        const handleScroll = () => {
             if (isVisible) {
-                const position = this.getPosition(targetEl);
-                const { left, top, translateX, translateY } = adjustPosition(targetEl, tooltipEl, backdropEl, position);
-                
-                tooltipEl.style.left = `${left}px`;
-                tooltipEl.style.top = `${top}px`;
-                tooltipEl.style.transform = `translateY(${translateY}) translateX(${translateX})`;
-                
-                // Re-apply the stored backdrop styles to maintain consistency
-                applyStyles(backdropEl, currentBackdropStyles);
+                // Hide tooltip on scroll
+                hideTooltip();
             }
         };
     
@@ -243,9 +240,9 @@ if(!isMobileTooltip){(function() {
             setTimeout(hideTooltip, 225);
         });
     
-        // Add scroll event listener to reposition tooltip when using fixed positioning
-        window.addEventListener('scroll', repositionTooltip);
-        window.addEventListener('resize', repositionTooltip);
+        // Add scroll event listener to hide tooltip when scrolling
+        window.addEventListener('scroll', handleScroll);
+        window.addEventListener('resize', handleScroll);
     };
     
     // Expose as global function
