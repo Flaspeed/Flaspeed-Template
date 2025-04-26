@@ -21,11 +21,13 @@ function materialEnter(t,e,i){t.style.display="block",t.style.opacity="0",t.styl
       menuWidth: 300,
       edge: BlogDirection === 'rtl'?'right':'left',
       closeOnClick: false,
-      draggable: true,
-      inDuration: 300,
+      inDuration: 250,
       outDuration: 200,
-      onOpen: null,
-      onClose: null
+      onOpenStart: null,
+      onOpenEnd: null,
+      onCloseStart: null,
+      onCloseEnd: null,
+      preventScrolling: true
     };
   
     // كائن الـ SideNav
@@ -33,15 +35,17 @@ function materialEnter(t,e,i){t.style.display="block",t.style.opacity="0",t.styl
       this.elem = elem;
       this.options = Object.assign({}, defaults, options);
       
-      // متغيرات للحالة
-      this.menuOut = false;
-      this.isDragged = false; // إضافة متغير isDragged مثل الكود الأصلي
+      // إضافة خصائص جديدة من الكود الأول
+      this.isDragged = false;
+      this.isOpen = false;
       this._startingXpos = 0;
       this._xPos = 0;
       this._time = 0;
       this._width = 0;
       this.percentOpen = 0;
       this._verticallyScrolling = false;
+      this.lastWindowWidth = window.innerWidth;
+      this.lastWindowHeight = window.innerHeight;
       
       this.init();
     }
@@ -52,471 +56,487 @@ function materialEnter(t,e,i){t.style.display="block",t.style.opacity="0",t.styl
       const menuId = activator.getAttribute('data-activates');
       const menu = document.getElementById(menuId);
       if (!menu) return;
-      this.menu = menu;
-      
+  
+      // تعيين العرض
       if (this.options.menuWidth != 300) {
         menu.style.width = this.options.menuWidth + "px";
       }
-      this._width = this.options.menuWidth;
-      
+      this._width = menu.getBoundingClientRect().width;
+  
       // إنشاء منطقة السحب
       let dragTarget = document.querySelector(`.drag-target[data-sidenav="${menuId}"]`);
-      if (this.options.draggable) {
-        if (dragTarget) {
-          dragTarget.parentNode.removeChild(dragTarget);
-        }
-        dragTarget = document.createElement('div');
-        dragTarget.className = 'drag-target';
-        dragTarget.setAttribute('data-sidenav', menuId);
-        document.body.appendChild(dragTarget);
-      } else {
-        dragTarget = null;
+      if (dragTarget) {
+        dragTarget.parentNode.removeChild(dragTarget);
       }
+      dragTarget = document.createElement('div');
+      dragTarget.className = 'drag-target';
+      dragTarget.setAttribute('data-sidenav', menuId);
+      document.body.appendChild(dragTarget);
       this.dragTarget = dragTarget;
       
+      // إنشاء الطبقة المتراكبة (overlay)
+      this._createOverlay(menuId);
+  
       // تعيين الموضع الابتدائي بناءً على الحافة (left/right)
       if (this.options.edge === 'left') {
         menu.classList.add('left-aligned');
         menu.style.transform = 'translateX(-100%)';
-        if (dragTarget) dragTarget.style.left = '0';
+        this.dragTarget.style.left = '0';
       } else {
         menu.classList.add('right-aligned');
         menu.style.transform = 'translateX(100%)';
-        if (dragTarget) dragTarget.style.right = '0';
+        this.dragTarget.style.right = '0';
       }
-      
+  
       // حالة الـ fixed
       this.isFixed = menu.classList.contains('fixed');
       if (this.isFixed) {
-        if (window.innerWidth > 992) {
-          menu.style.transform = 'translateX(0)';
-          this.menuOut = true;
-        }
+        this._setupFixed();
       }
   
-      this._setupEventHandlers();
+      // إعداد معالجات الأحداث
+      this._setupEventHandlers(menu, menuId);
+  
+      // إذا closeOnClick مفعل نضيف حدث إغلاق عند الضغط على الروابط
+      if (this.options.closeOnClick === true) {
+        this._setupCloseOnClick(menu);
+      }
+  
+      // حدث النقر على العنصر المفعل (activator)
+      activator.addEventListener('click', function(e) {
+        e.preventDefault();
+        if (self.isOpen) {
+          self.close();
+        } else {
+          self.open();
+        }
+      });
     };
-    
-    SideNav.prototype._isCurrentlyFixed = function() {
-      return this.isFixed && window.innerWidth > 992;
+  
+    SideNav.prototype._createOverlay = function(menuId) {
+      let overlay = document.getElementById('sidenav-overlay');
+      if (overlay) {
+        overlay.parentNode.removeChild(overlay);
+      }
+      
+      overlay = document.createElement('div');
+      overlay.id = 'sidenav-overlay';
+      overlay.style.opacity = '0';
+      overlay.style.display = 'none';
+      
+      const self = this;
+      overlay.addEventListener('click', function() {
+        self.close();
+      });
+      
+      document.body.appendChild(overlay);
+      this._overlay = overlay;
     };
-    
-    SideNav.prototype._setupEventHandlers = function() {
+  
+    SideNav.prototype._setupEventHandlers = function(menu, menuId) {
       const self = this;
       
-      // معالجة تغيير حجم النافذة
+      // معالجات أحداث السحب
+      this._handleDragTargetDragBound = this._handleDragTargetDrag.bind(this);
+      this._handleDragTargetReleaseBound = this._handleDragTargetRelease.bind(this);
+      this._handleCloseDragBound = this._handleCloseDrag.bind(this);
+      this._handleCloseReleaseBound = this._handleCloseRelease.bind(this);
+      
+      this.dragTarget.addEventListener('touchmove', this._handleDragTargetDragBound);
+      this.dragTarget.addEventListener('touchend', this._handleDragTargetReleaseBound);
+      this._overlay.addEventListener('touchmove', this._handleCloseDragBound);
+      this._overlay.addEventListener('touchend', this._handleCloseReleaseBound);
+      
+      // معالج تغيير حجم النافذة
       if (this.isFixed) {
         this._handleWindowResizeBound = this._handleWindowResize.bind(this);
         window.addEventListener('resize', this._handleWindowResizeBound);
       }
-      
-      // إذا closeOnClick مفعل نضيف حدث إغلاق عند الضغط على الروابط
-      if (this.options.closeOnClick === true) {
-        this._handleMenuClickBound = this._handleMenuClick.bind(this);
-        this.menu.addEventListener('click', this._handleMenuClickBound);
-      }
-      
-      // معالجة النقر على العنصر المفعّل (activator)
-      this._handleActivatorClickBound = this._handleActivatorClick.bind(this);
-      this.elem.addEventListener('click', this._handleActivatorClickBound);
-      
-      // معالجة أحداث السحب
-      if (this.options.draggable && this.dragTarget) {
-        this._handleDragTargetClickBound = () => {
-          if (this.menuOut) this.close();
-        };
-        this.dragTarget.addEventListener('click', this._handleDragTargetClickBound);
-        
-        // أحداث اللمس للسحب
-        this._handleDragTargetDragBound = this._handleDragTargetDrag.bind(this);
-        this._handleDragTargetReleaseBound = this._handleDragTargetRelease.bind(this);
-        this._handleCloseDragBound = this._handleCloseDrag.bind(this);
-        this._handleCloseReleaseBound = this._handleCloseRelease.bind(this);
-        
-        this.dragTarget.addEventListener('touchstart', this._startDrag.bind(this));
-        this.dragTarget.addEventListener('touchmove', this._handleDragTargetDragBound);
-        this.dragTarget.addEventListener('touchend', this._handleDragTargetReleaseBound);
-        
-        // أحداث إضافية للمنطقة المتراكبة والقائمة
-        this._handleCloseTriggerClickBound = this._handleCloseTriggerClick.bind(this);
-        this.menu.addEventListener('touchmove', this._handleCloseDragBound);
-        this.menu.addEventListener('touchend', this._handleCloseReleaseBound);
-        this.menu.addEventListener('click', this._handleCloseTriggerClickBound);
-      }
     };
-    
-    SideNav.prototype._removeEventHandlers = function() {
-      if (this.isFixed && this._handleWindowResizeBound) {
-        window.removeEventListener('resize', this._handleWindowResizeBound);
-      }
-      
-      if (this._handleMenuClickBound) {
-        this.menu.removeEventListener('click', this._handleMenuClickBound);
-      }
-      
-      this.elem.removeEventListener('click', this._handleActivatorClickBound);
-      
-      if (this.options.draggable && this.dragTarget) {
-        this.dragTarget.removeEventListener('click', this._handleDragTargetClickBound);
-        this.dragTarget.removeEventListener('touchstart', this._startDrag.bind(this));
-        this.dragTarget.removeEventListener('touchmove', this._handleDragTargetDragBound);
-        this.dragTarget.removeEventListener('touchend', this._handleDragTargetReleaseBound);
-        
-        this.menu.removeEventListener('touchmove', this._handleCloseDragBound);
-        this.menu.removeEventListener('touchend', this._handleCloseReleaseBound);
-        this.menu.removeEventListener('click', this._handleCloseTriggerClickBound);
-      }
-    };
-    
-    SideNav.prototype._handleWindowResize = function() {
-      // فقط معالجة تغييرات العرض الأفقية
-      if (window.innerWidth > 992) {
-        if (this.menuOut) {
-          this.menu.style.transform = 'translateX(0)';
-        } else {
-          this.open();
+  
+    SideNav.prototype._setupCloseOnClick = function(menu) {
+      const self = this;
+      menu.addEventListener('click', function(e) {
+        let target = e.target;
+        if (target.tagName.toLowerCase() === 'a' && !target.classList.contains('collapsible-header')) {
+          if (!(window.innerWidth > 992 && self.isFixed)) {
+            self.close();
+          }
         }
-      } else if (!this.menuOut) {
-        if (this.options.edge === 'left') {
-          this.menu.style.transform = 'translateX(-100%)';
-        } else {
-          this.menu.style.transform = 'translateX(100%)';
-        }
-      }
+      });
     };
-    
-    SideNav.prototype._handleMenuClick = function(e) {
-      let target = e.target;
-      if (target.tagName.toLowerCase() === 'a' && !target.classList.contains('collapsible-header')) {
-        if (!(window.innerWidth > 992 && this.isFixed)) {
-          this.close();
-        }
-      }
-    };
-    
-    SideNav.prototype._handleCloseTriggerClick = function(e) {
-      let $closeTrigger = e.target.closest('.sidenav-close');
-      if ($closeTrigger && !this._isCurrentlyFixed()) {
-        this.close();
-      }
-    };
-    
-    SideNav.prototype._handleActivatorClick = function(e) {
-      e.preventDefault();
-      if (this.menuOut) {
-        this.close();
-      } else {
+  
+    SideNav.prototype._setupFixed = function() {
+      if (this._isCurrentlyFixed()) {
         this.open();
       }
     };
-    
-    // ميزة جديدة: بدء السحب وضبط متغيرات بدء السحب
-    SideNav.prototype._startDrag = function(e) {
-      if (!this.options.draggable || this._isCurrentlyFixed()) return;
-      
-      const touch = e.touches[0];
-      if (e.touches.length === 1) {
-        this.isDragged = true;
-        this._startingXpos = touch.clientX;
-        this._xPos = this._startingXpos;
-        this._time = Date.now();
-        this._verticallyScrolling = false;
-        
-        // تعطيل التمرير
-        const oldWidth = document.body.clientWidth;
-        document.body.style.overflow = 'hidden';
-        document.body.style.width = oldWidth + "px";
-      }
+  
+    SideNav.prototype._isCurrentlyFixed = function() {
+      return this.isFixed && window.innerWidth > 992;
     };
-    
-    // معالجة حركة السحب
-    SideNav.prototype._handleDragTargetDrag = function(e) {
-      // التحقق مما إذا كان يمكن السحب
-      if (!this.options.draggable || this._isCurrentlyFixed() || this._verticallyScrolling) {
-        return;
-      }
+  
+    SideNav.prototype._startDrag = function(e) {
+      const clientX = e.targetTouches[0].clientX;
+      this.isDragged = true;
+      this._startingXpos = clientX;
+      this._xPos = this._startingXpos;
+      this._time = Date.now();
+      this._verticallyScrolling = false;
       
-      // إذا لم يكن يتم سحبه، قم بتعيين متغيرات بدء السحب
-      if (!this.isDragged) {
-        this._startDrag(e);
-      }
+      // إظهار الطبقة المتراكبة
+      this._overlay.style.display = 'block';
       
-      // تحديث متغيرات الحركة
-      const touch = e.touches[0];
-      const currentX = touch.clientX;
-      const currentScrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+      // حفظ موضع التمرير
+      this._initialScrollTop = this.isOpen ? document.getElementById(this.elem.getAttribute('data-activates')).scrollTop : document.documentElement.scrollTop;
+    };
+  
+    SideNav.prototype._dragMoveUpdate = function(e) {
+      const clientX = e.targetTouches[0].clientX;
+      const currentScrollTop = this.isOpen ? document.getElementById(this.elem.getAttribute('data-activates')).scrollTop : document.documentElement.scrollTop;
       
-      this.deltaX = Math.abs(this._xPos - currentX);
-      this._xPos = currentX;
+      this.deltaX = Math.abs(this._xPos - clientX);
+      this._xPos = clientX;
       this.velocityX = this.deltaX / (Date.now() - this._time);
       this._time = Date.now();
       
-      // التحقق من التمرير العمودي
-      if (currentScrollTop !== this._initialScrollTop) {
+      if (this._initialScrollTop !== currentScrollTop) {
         this._verticallyScrolling = true;
+      }
+    };
+  
+    SideNav.prototype._handleDragTargetDrag = function(e) {
+      // التحقق من إمكانية السحب
+      if (this._isCurrentlyFixed() || this._verticallyScrolling) {
         return;
       }
-      
-      e.preventDefault();
-      
+  
+      // إذا لم يتم سحبه بعد، قم بتعيين متغيرات بدء السحب الأولية
+      if (!this.isDragged) {
+        this._startDrag(e);
+      }
+  
+      // تحديث متغيرات السحب
+      this._dragMoveUpdate(e);
+  
       // حساب deltaX الإجمالي
       let totalDeltaX = this._xPos - this._startingXpos;
-      
-      // اتجاه السحب هو اتجاه سحب المستخدم المحاول
-      const dragDirection = totalDeltaX > 0 ? 'right' : 'left';
-      
-      // لا تسمح لـ totalDeltaX بتجاوز عرض SideNav أو السحب في الاتجاه المعاكس
+  
+      // اتجاه السحب هو محاولة اتجاه سحب المستخدم
+      let dragDirection = totalDeltaX > 0 ? 'right' : 'left';
+  
+      // لا تسمح بتجاوز عرض القائمة أو السحب في الاتجاه المعاكس
       totalDeltaX = Math.min(this._width, Math.abs(totalDeltaX));
       if (this.options.edge === dragDirection) {
         totalDeltaX = 0;
       }
+  
+      // حساب إزاحة التحويل والبادئة
+      let transformX = totalDeltaX;
+      const menuElement = document.getElementById(this.elem.getAttribute('data-activates'));
       
-      // إنشاء overlay إذا لم يكن موجودًا
-      let overlay = document.getElementById('sidenav-overlay');
-      if (!overlay) {
-        overlay = document.createElement('div');
-        overlay.id = 'sidenav-overlay';
-        overlay.style.opacity = '0';
-        overlay.addEventListener('click', () => this.close());
-        document.body.appendChild(overlay);
-        this._overlay = overlay;
+      if (this.options.edge === 'left') {
+        transformX = totalDeltaX - this._width;
+        menuElement.style.transform = `translateX(${transformX}px)`;
+      } else {
+        transformX = this._width - totalDeltaX;
+        menuElement.style.transform = `translateX(${-transformX}px)`;
       }
-      
+  
       // حساب نسبة الفتح
       this.percentOpen = Math.min(1, totalDeltaX / this._width);
       
-      // تعيين أنماط التحويل والشفافية
-      if (this.options.edge === 'left') {
-        let transformX = totalDeltaX - this._width;
-        // التحقق من الحدود
-        if (transformX > 0) transformX = 0;
-        
-        this.menu.style.transform = `translateX(${transformX}px)`;
-        overlay.style.opacity = this.percentOpen;
-      } else {
-        // للحافة اليمنى
-        let transformX = this._width - totalDeltaX;
-        if (transformX < 0) transformX = 0;
-        
-        this.menu.style.transform = `translateX(${window.innerWidth - transformX}px)`;
-        overlay.style.opacity = this.percentOpen;
+      // تعيين شفافية الطبقة المتراكبة
+      this._overlay.style.opacity = this.percentOpen;
+      
+      // منع التمرير
+      if (this.options.preventScrolling) {
+        document.body.style.overflow = 'hidden';
       }
     };
-    
+  
+    SideNav.prototype._handleDragTargetRelease = function() {
+      if (this.isDragged) {
+        const menuElement = document.getElementById(this.elem.getAttribute('data-activates'));
+        
+        if (this.percentOpen > 0.2) {
+          this.open();
+        } else {
+          // إعادة العنصر إلى موضعه الأصلي
+          if (this.options.edge === 'left') {
+            animateStyles(menuElement, { transform: 'translateX(-100%)' }, this.options.outDuration, 'cubic-bezier(0.25, 0.46, 0.45, 0.94)');
+          } else {
+            animateStyles(menuElement, { transform: 'translateX(100%)' }, this.options.outDuration, 'cubic-bezier(0.25, 0.46, 0.45, 0.94)');
+          }
+          
+          // إزالة الطبقة المتراكبة
+          animateStyles(this._overlay, { opacity: '0' }, this.options.outDuration, 'ease-out', () => {
+            this._overlay.style.display = 'none';
+          });
+          
+          // إعادة تمكين التمرير
+          if (this.options.preventScrolling) {
+            document.body.style.overflow = '';
+          }
+        }
+  
+        this.isDragged = false;
+        this._verticallyScrolling = false;
+      }
+    };
+  
     SideNav.prototype._handleCloseDrag = function(e) {
-      if (this.menuOut) {
-        // التحقق مما إذا كان يمكن السحب
-        if (!this.options.draggable || this._isCurrentlyFixed() || this._verticallyScrolling) {
+      if (this.isOpen) {
+        // التحقق من إمكانية السحب
+        if (this._isCurrentlyFixed() || this._verticallyScrolling) {
           return;
         }
-        
-        // إذا لم يكن يتم سحبه، قم بتعيين متغيرات بدء السحب
+  
+        // إذا لم يتم سحبه بعد، قم بتعيين متغيرات بدء السحب الأولية
         if (!this.isDragged) {
-          const touch = e.touches[0];
-          this.isDragged = true;
-          this._startingXpos = touch.clientX;
-          this._xPos = this._startingXpos;
-          this._time = Date.now();
-          this._verticallyScrolling = false;
+          this._startDrag(e);
         }
-        
-        // تحديث متغيرات الحركة
-        const touch = e.touches[0];
-        const currentX = touch.clientX;
-        
-        this.deltaX = Math.abs(this._xPos - currentX);
-        this._xPos = currentX;
-        this.velocityX = this.deltaX / (Date.now() - this._time);
-        this._time = Date.now();
-        
-        e.preventDefault();
-        
+  
+        // تحديث متغيرات السحب
+        this._dragMoveUpdate(e);
+  
         // حساب deltaX الإجمالي
-        let totalDeltaX = this._startingXpos - this._xPos;
-        
-        // اتجاه السحب
-        const dragDirection = totalDeltaX > 0 ? 'right' : 'left';
-        
+        let totalDeltaX = this._xPos - this._startingXpos;
+  
+        // اتجاه السحب هو محاولة اتجاه سحب المستخدم
+        let dragDirection = totalDeltaX > 0 ? 'right' : 'left';
+  
+        // لا تسمح بتجاوز عرض القائمة أو السحب في الاتجاه المعاكس
         totalDeltaX = Math.min(this._width, Math.abs(totalDeltaX));
         if (this.options.edge !== dragDirection) {
           totalDeltaX = 0;
         }
-        
-        let transformX;
-        const overlay = document.getElementById('sidenav-overlay');
+  
+        const menuElement = document.getElementById(this.elem.getAttribute('data-activates'));
+        let transformX = -totalDeltaX;
         
         if (this.options.edge === 'left') {
-          transformX = -totalDeltaX;
-          this.menu.style.transform = `translateX(${transformX}px)`;
+          menuElement.style.transform = `translateX(${transformX}px)`;
         } else {
-          transformX = totalDeltaX;
-          this.menu.style.transform = `translateX(${window.innerWidth - this._width + transformX}px)`;
+          menuElement.style.transform = `translateX(${-transformX}px)`;
         }
-        
+  
         // حساب نسبة الفتح
-        this.percentOpen = Math.max(0, 1 - totalDeltaX / this._width);
+        this.percentOpen = Math.min(1, 1 - totalDeltaX / this._width);
         
-        // تعيين شفافية الـ overlay
-        if (overlay) {
-          overlay.style.opacity = this.percentOpen;
-        }
+        // تعيين شفافية الطبقة المتراكبة
+        this._overlay.style.opacity = this.percentOpen;
       }
     };
-    
-    SideNav.prototype._handleDragTargetRelease = function() {
-      if (this.isDragged) {
-        if (this.percentOpen > 0.2) {
-          this.open();
-        } else {
-          this.close();
-        }
-        
-        this.isDragged = false;
-        this._verticallyScrolling = false;
-      }
-    };
-    
+  
     SideNav.prototype._handleCloseRelease = function() {
-      if (this.menuOut && this.isDragged) {
+      if (this.isOpen && this.isDragged) {
+        const menuElement = document.getElementById(this.elem.getAttribute('data-activates'));
+        
         if (this.percentOpen > 0.8) {
-          this.open();
+          // بقاء القائمة مفتوحة
+          animateStyles(menuElement, { transform: 'translateX(0)' }, this.options.inDuration, 'ease-out');
+          animateStyles(this._overlay, { opacity: '1' }, this.options.inDuration, 'ease-out');
         } else {
           this.close();
         }
-        
+  
         this.isDragged = false;
         this._verticallyScrolling = false;
       }
     };
-    
-    SideNav.prototype._enableBodyScrolling = function() {
-      document.body.style.overflow = '';
-      document.body.style.width = '';
-    };
-    
-    SideNav.prototype._preventBodyScrolling = function() {
-      const oldWidth = document.body.clientWidth;
-      document.body.style.overflow = 'hidden';
-      document.body.style.width = oldWidth + "px";
-    };
-    
-    SideNav.prototype.open = function() {
-      if (this.menuOut === true) return;
-      
-      if (typeof this.options.onOpen === 'function') {
-        this.options.onOpen.call(this.menu);
-      }
-      
-      this.menuOut = true;
-      
-      // التعامل مع SideNav الثابت
-      if (this._isCurrentlyFixed()) {
-        this.menu.style.transform = 'translateX(0)';
-        this._enableBodyScrolling();
-        return;
-      }
-      
-      // منع التمرير
-      this._preventBodyScrolling();
-      
-      // إنشاء overlay إذا لم يكن موجودًا
-      let overlay = document.getElementById('sidenav-overlay');
-      if (!overlay) {
-        overlay = document.createElement('div');
-        overlay.id = 'sidenav-overlay';
-        overlay.style.opacity = '0';
-        overlay.addEventListener('click', () => this.close());
-        document.body.appendChild(overlay);
-      }
-      
-      // إعداد منطقة السحب
-      if (this.options.draggable && this.dragTarget) {
-        if (this.options.edge === 'left') {
-          this.dragTarget.style.width = '50%';
-          this.dragTarget.style.right = '0';
-          this.dragTarget.style.left = '';
-        } else {
-          this.dragTarget.style.width = '50%';
-          this.dragTarget.style.right = '';
-          this.dragTarget.style.left = '0';
-        }
-      }
-      
-      // الرسوم المتحركة بناءً على حالة السحب
-      if (!this.isDragged || this.percentOpen !== 1) {
-        animateStyles(this.menu, { transform: 'translateX(0)' }, this.options.inDuration, 'ease-out');
-        animateStyles(overlay, { opacity: '1' }, this.options.inDuration, 'ease-out');
-      }
-    };
-    
-    SideNav.prototype.close = function() {
-      if (this.menuOut === false) return;
-      
-      if (typeof this.options.onClose === 'function') {
-        this.options.onClose.call(this.menu);
-      }
-      
-      this.menuOut = false;
-      
-      // التعامل مع SideNav الثابت
-      if (this._isCurrentlyFixed()) {
-        const transformX = this.options.edge === 'left' ? '-105%' : '105%';
-        this.menu.style.transform = `translateX(${transformX})`;
-        return;
-      }
-      
-      // تمكين التمرير
-      this._enableBodyScrolling();
-      
-      // الحصول على الـ overlay
-      const overlay = document.getElementById('sidenav-overlay');
-      
-      // الرسوم المتحركة للغلق بناءً على حالة السحب
-      if (!this.isDragged || this.percentOpen !== 0) {
-        const transformValue = this.options.edge === 'left' ? '-100%' : '100%';
-        animateStyles(this.menu, { transform: `translateX(${transformValue})` }, this.options.outDuration, 'ease-out');
-        
-        if (overlay) {
-          animateStyles(overlay, { opacity: '0' }, this.options.outDuration, 'ease-out', function() {
-            if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
-          });
-        }
-        
-        if (this.dragTarget) {
-          if (this.options.edge === 'left') {
-            this.dragTarget.style.width = '10px';
-            this.dragTarget.style.right = '';
-            this.dragTarget.style.left = '0';
+  
+    SideNav.prototype._handleWindowResize = function() {
+      // معالجة إعادة تحجيم أفقية فقط
+      if (this.lastWindowWidth !== window.innerWidth) {
+        if (window.innerWidth > 992) {
+          if (this.isOpen) {
+            this.open();
           } else {
-            this.dragTarget.style.width = '10px';
-            this.dragTarget.style.right = '0';
-            this.dragTarget.style.left = '';
+            const menuElement = document.getElementById(this.elem.getAttribute('data-activates'));
+            menuElement.style.transform = 'translateX(0)';
+          }
+        } else {
+          if (!this.isOpen) {
+            const menuElement = document.getElementById(this.elem.getAttribute('data-activates'));
+            if (this.options.edge === 'left') {
+              menuElement.style.transform = 'translateX(-100%)';
+            } else {
+              menuElement.style.transform = 'translateX(100%)';
+            }
           }
         }
-      } else if (overlay) {
-        overlay.style.display = 'none';
       }
+  
+      this.lastWindowWidth = window.innerWidth;
+      this.lastWindowHeight = window.innerHeight;
     };
-    
+  
+    SideNav.prototype.open = function() {
+      if (this.isOpen === true) {
+        return;
+      }
+  
+      const menuElement = document.getElementById(this.elem.getAttribute('data-activates'));
+      
+      // تشغيل الدالة onOpenStart
+      if (typeof this.options.onOpenStart === 'function') {
+        this.options.onOpenStart.call(this, menuElement);
+      }
+  
+      // معالجة القائمة الثابتة
+      if (this._isCurrentlyFixed()) {
+        animateStyles(menuElement, { transform: 'translateX(0)' }, 0, 'easeOutQuad');
+        
+        if (this.options.preventScrolling) {
+          document.body.style.overflow = '';
+        }
+        
+        this._overlay.style.display = 'none';
+      } else {
+        // معالجة القائمة غير الثابتة
+        if (this.options.preventScrolling) {
+          document.body.style.overflow = 'hidden';
+        }
+  
+        if (!this.isDragged || this.percentOpen != 1) {
+          // تحريك القائمة للداخل
+          const slideOutPercent = this.options.edge === 'left' ? -1 : 1;
+          let startTransform = slideOutPercent * 100;
+          
+          if (this.isDragged) {
+            startTransform = this.options.edge === 'left' 
+              ? startTransform + this.percentOpen * 100
+              : startTransform - this.percentOpen * 100;
+          }
+          
+          animateStyles(
+            menuElement, 
+            { transform: 'translateX(0)' }, 
+            this.options.inDuration, 
+            'ease-out',
+            () => {
+              // تشغيل الدالة onOpenEnd
+              if (typeof this.options.onOpenEnd === 'function') {
+                this.options.onOpenEnd.call(this, menuElement);
+              }
+            }
+          );
+          
+          // تحريك الطبقة المتراكبة للداخل
+          this._overlay.style.display = 'block';
+          
+          let overlayStartOpacity = 0;
+          if (this.isDragged) {
+            overlayStartOpacity = this.percentOpen;
+          }
+          
+          animateStyles(
+            this._overlay, 
+            { opacity: '1' }, 
+            this.options.inDuration, 
+            'ease-out'
+          );
+        }
+      }
+  
+      this.isOpen = true;
+    };
+  
+    SideNav.prototype.close = function() {
+      if (this.isOpen === false) {
+        return;
+      }
+  
+      const menuElement = document.getElementById(this.elem.getAttribute('data-activates'));
+      
+      // تشغيل الدالة onCloseStart
+      if (typeof this.options.onCloseStart === 'function') {
+        this.options.onCloseStart.call(this, menuElement);
+      }
+  
+      // معالجة القائمة الثابتة
+      if (this._isCurrentlyFixed()) {
+        let transformX = this.options.edge === 'left' ? '-105%' : '105%';
+        menuElement.style.transform = `translateX(${transformX})`;
+      } else {
+        // معالجة القائمة غير الثابتة
+        if (this.options.preventScrolling) {
+          document.body.style.overflow = '';
+        }
+  
+        if (!this.isDragged || this.percentOpen != 0) {
+          // تحريك القائمة للخارج
+          let endPercent = this.options.edge === 'left' ? -1 : 1;
+          let slideOutPercent = 0;
+          
+          if (this.isDragged) {
+            slideOutPercent = this.options.edge === 'left'
+              ? endPercent + this.percentOpen
+              : endPercent - this.percentOpen;
+          }
+  
+          let endTransform = `${endPercent * 105}%`;
+          
+          animateStyles(
+            menuElement, 
+            { transform: `translateX(${endTransform})` }, 
+            this.options.outDuration, 
+            'ease-out',
+            () => {
+              // تشغيل الدالة onCloseEnd
+              if (typeof this.options.onCloseEnd === 'function') {
+                this.options.onCloseEnd.call(this, menuElement);
+              }
+            }
+          );
+          
+          // تحريك الطبقة المتراكبة للخارج
+          animateStyles(
+            this._overlay, 
+            { opacity: '0' }, 
+            this.options.outDuration, 
+            'ease-out',
+            () => {
+              this._overlay.style.display = 'none';
+            }
+          );
+        } else {
+          this._overlay.style.display = 'none';
+        }
+      }
+  
+      this.isOpen = false;
+    };
+  
     SideNav.prototype.destroy = function() {
-      this._removeEventHandlers();
-      this._enableBodyScrolling();
+      // إزالة معالجات الأحداث
+      this.dragTarget.removeEventListener('touchmove', this._handleDragTargetDragBound);
+      this.dragTarget.removeEventListener('touchend', this._handleDragTargetReleaseBound);
+      this._overlay.removeEventListener('touchmove', this._handleCloseDragBound);
+      this._overlay.removeEventListener('touchend', this._handleCloseReleaseBound);
       
+      if (this.isFixed) {
+        window.removeEventListener('resize', this._handleWindowResizeBound);
+      }
+      
+      // إزالة العناصر
       const menuId = this.elem.getAttribute('data-activates');
-      const overlay = document.getElementById('sidenav-overlay');
-      const dragTarget = document.querySelector(`.drag-target[data-sidenav="${menuId}"]`);
+      if (this.dragTarget && this.dragTarget.parentNode) {
+        this.dragTarget.parentNode.removeChild(this.dragTarget);
+      }
+      if (this._overlay && this._overlay.parentNode) {
+        this._overlay.parentNode.removeChild(this._overlay);
+      }
       
-      if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
-      if (dragTarget && dragTarget.parentNode) dragTarget.parentNode.removeChild(dragTarget);
-      
-      this.menu.style.transform = '';
+      // إعادة تعيين الخصائص
       this.elem.M_SideNav = undefined;
     };
-    
+  
     SideNav.prototype.show = function() {
       this.open();
     };
-    
+  
     SideNav.prototype.hide = function() {
       this.close();
     };
