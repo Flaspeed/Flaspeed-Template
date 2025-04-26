@@ -3,8 +3,548 @@ if(!isMobileTooltip){!function(){function t(t,i){Object.assign(t.style,i)}functi
 /*DropMenu*/
 function materialEnter(t,e,i){t.style.display="block",t.style.opacity="0",t.style.transform="scale(0.8)",t.style.transition=`transform ${e}ms cubic-bezier(0.4, 0.0, 0.2, 1), opacity ${e}ms cubic-bezier(0.4, 0.0, 0.2, 1)`,t.offsetWidth,requestAnimationFrame(()=>{t.style.opacity="1",t.style.transform="scale(1)"}),setTimeout(()=>{t.style.transition="","function"==typeof i&&i()},e+20)}function materialExit(t,e,i){t.style.transition=`transform ${e}ms cubic-bezier(0.4, 0.0, 0.2, 1), opacity ${e}ms cubic-bezier(0.4, 0.0, 0.2, 1)`,t.style.opacity="0",t.style.transform="scale(0.8)",setTimeout(()=>{t.style.display="none",t.style.transition="","function"==typeof i&&i()},e)}function initDropdown(t,e={}){if("open"===e){for(let i of t){let n=new CustomEvent("open");i.dispatchEvent(n)}return!1}if("close"===e){for(let o of t){let s=new CustomEvent("close");o.dispatchEvent(s)}return!1}let a={inDuration:100,outDuration:100,constrainWidth:!1,hover:!1,gutter:0,belowOrigin:!0,alignment:"rtl"===BlogDirection?"right":"left",stopPropagation:!1};for(let r of t){let l=Object.assign({},a,e),c=!1,d=r.getAttribute("data-target"),p=document.getElementById(d);function f(){void 0!==r.dataset.induration&&(l.inDuration=parseInt(r.dataset.induration)),void 0!==r.dataset.outduration&&(l.outDuration=parseInt(r.dataset.outduration)),void 0!==r.dataset.constrainwidth&&(l.constrainWidth="true"===r.dataset.constrainwidth),void 0!==r.dataset.hover&&(l.hover="true"===r.dataset.hover),void 0!==r.dataset.gutter&&(l.gutter=parseInt(r.dataset.gutter)),void 0!==r.dataset.beloworigin&&(l.belowOrigin="true"===r.dataset.beloworigin),void 0!==r.dataset.alignment&&(l.alignment=r.dataset.alignment),void 0!==r.dataset.stoppropagation&&(l.stopPropagation="true"===r.dataset.stoppropagation)}function u(t){"focus"===t&&(c=!0),f(),p.classList.add("active"),r.classList.add("active");let e=r.getBoundingClientRect().width;!0===l.constrainWidth&&(p.style.width=e+"px"),p.style.display="block",p.style.visibility="hidden",p.style.opacity="0",p.style.transform="scale(0.8)";let i=window.innerWidth,n=window.innerHeight,o=r.clientHeight,s=r.getBoundingClientRect(),a=p.offsetWidth,d=p.offsetHeight,u=l.alignment;"left"===u?s.left+a>i&&(u="right"):"right"===u&&s.right-a<0&&(u="left");let y=0;!0===l.belowOrigin&&(y=o);let $=0,v=r.parentElement;if(v&&v!==document.body&&v.scrollHeight>v.clientHeight&&($=v.scrollTop),s.top+y+d>n){if(s.top+o-d<0){let m=n-s.top-y;p.style.maxHeight=m+"px"}else y||(y+=o),y-=d}p.style.position="absolute",p.style.top=r.offsetTop+y+$+"px","left"===u?(p.style.left="0px",p.style.right="auto",p.style.transformOrigin="top left"):"right"===u?(p.style.right="0px",p.style.left="auto",p.style.transformOrigin="top right"):p.style.transformOrigin="top",p.style.display="none",p.style.visibility="visible",materialEnter(p,l.inDuration,()=>{p.style.height=""}),setTimeout(()=>{document.addEventListener("click",g)},0)}p&&(p.style.display="none",p.style.opacity="0"),f(),p&&r.nextElementSibling!==p&&r.parentNode.insertBefore(p,r.nextElementSibling);let g=function(t){!(t.target.closest("button.sp-btn")||t.target.closest(".sp-btn"))&&(y(),document.removeEventListener("click",g))};function y(){c=!1,materialExit(p,l.outDuration,()=>{p.classList.remove("active"),r.classList.remove("active"),document.removeEventListener("click",g),p.style.maxHeight=""})}if(l.hover){let $=!1;r.removeEventListener("click",clickHandler),r.addEventListener("mouseenter",t=>{!1===$&&(u(),$=!0)}),r.addEventListener("mouseleave",t=>{let e=t.relatedTarget;e&&p.contains(e)||(y(),$=!1)}),p.addEventListener("mouseleave",t=>{let e=t.relatedTarget;e&&r.contains(e)||(y(),$=!1)})}else{let v=function(t){if(!c){if(r!==t.currentTarget||r.classList.contains("active")||t.target.closest(".dropdown-content")){if(r.classList.contains("active")){if(t.target.closest("button.sp-btn")||t.target.closest(".sp-btn"))return;y(),document.removeEventListener("click",g)}}else t.preventDefault(),l.stopPropagation&&t.stopPropagation(),u("click")}};if(p){let m=p.querySelectorAll("button.sp-btn, .sp-btn");for(let h of m)h.addEventListener("click",t=>{})}r.removeEventListener("click",v),r.addEventListener("click",v)}r.addEventListener("open",t=>{u(t.detail)}),r.addEventListener("close",y)}}NodeList.prototype.dropdown=function(t){return initDropdown(this,t)},HTMLElement.prototype.dropdown=function(t){return initDropdown([this],t)};
 /*Drawer*/
-!function(){function t(t,e,n,o,i){for(let s in t.style.transition=`all ${n}ms ${o}`,e)t.style[s]=e[s];setTimeout(function(){t.style.transition="",i&&"function"==typeof i&&i()},n)}let e={menuWidth:300,edge:"rtl"===BlogDirection?"right":"left",closeOnClick:!1,draggable:!0,onOpen:null,onClose:null};function n(t,n){this.elem=t,this.options=Object.assign({},e,n),this.init()}n.prototype.init=function(){let e=this,n=this.elem,o=n.getAttribute("data-activates"),i=document.getElementById(o);if(!i)return;300!=this.options.menuWidth&&(i.style.width=this.options.menuWidth+"px");let s=document.querySelector(`.drag-target[data-sidenav="${o}"]`);this.options.draggable?(s&&s.parentNode.removeChild(s),(s=document.createElement("div")).className="drag-target",s.setAttribute("data-sidenav",o),document.body.appendChild(s)):s=null,"left"===this.options.edge?(i.classList.add("left-aligned"),i.style.transform="translateX(-100%)",s&&(s.style.left="0")):(i.classList.add("right-aligned"),i.style.transform="translateX(100%)",s&&(s.style.right="0")),i.classList.contains("fixed")&&window.innerWidth>992&&(i.style.transform="translateX(0)");let l=!1,a=!1;function d(n){l=!1,a=!1,document.body.style.overflow="",document.body.style.width="";let o=document.getElementById("sidenav-overlay");o&&t(o,{opacity:"0"},200,"ease-out",function(){o.parentNode&&o.parentNode.removeChild(o)}),"left"===e.options.edge?(s&&(s.style.width="",s.style.right="",s.style.left="0"),t(i,{transform:"translateX(-100%)"},200,"cubic-bezier(0.25, 0.46, 0.45, 0.94)",function(){!0===n&&(i.removeAttribute("style"),i.style.width=e.options.menuWidth+"px"),"function"==typeof e.options.onClose&&e.options.onClose.call(i)})):(s&&(s.style.width="",s.style.right="0",s.style.left=""),t(i,{transform:"translateX(100%)"},200,"cubic-bezier(0.25, 0.46, 0.45, 0.94)",function(){!0===n&&(i.removeAttribute("style"),i.style.width=e.options.menuWidth+"px"),"function"==typeof e.options.onClose&&e.options.onClose.call(i)}))}if(i.classList.contains("fixed")&&window.addEventListener("resize",function(){window.innerWidth>992?document.getElementById("sidenav-overlay")&&a?d(!0):i.style.transform="translateX(0)":a||("left"===e.options.edge?i.style.transform="translateX(-100%)":i.style.transform="translateX(100%)")}),!0===this.options.closeOnClick&&i.addEventListener("click",function(t){let e=t.target;"a"!==e.tagName.toLowerCase()||e.classList.contains("collapsible-header")||window.innerWidth>992&&i.classList.contains("fixed")||d()}),this.options.draggable&&s){s.addEventListener("click",function(){a&&d()});let r=0,y=0,$=!1;s.addEventListener("touchstart",function(t){1===t.touches.length&&($=!0,r=t.touches[0].clientX)}),s.addEventListener("touchmove",function(t){if(!$)return;y=t.touches[0].clientX;let n=y-r;if(0===y&&0===t.touches[0].clientY)return;let o=document.body.clientWidth;document.body.style.overflow="hidden",document.body.style.width=o+"px";let s=document.getElementById("sidenav-overlay");if(s||((s=document.createElement("div")).id="sidenav-overlay",s.style.opacity="0",s.addEventListener("click",function(){d()}),document.body.appendChild(s),"function"==typeof e.options.onOpen&&e.options.onOpen.call(i)),"left"===e.options.edge){let l=n;l>e.options.menuWidth?l=e.options.menuWidth:l<0&&(l=0),a=l>=e.options.menuWidth/2,i.style.transform=`translateX(${l-e.options.menuWidth}px)`,s.style.opacity=l/e.options.menuWidth}else{let c=y;c>window.innerWidth&&(c=window.innerWidth),c<window.innerWidth-e.options.menuWidth&&(c=window.innerWidth-e.options.menuWidth),a=c<window.innerWidth-e.options.menuWidth/2;let p=c-e.options.menuWidth/2;p<0&&(p=0),i.style.transform=`translateX(${p}px)`,s.style.opacity=Math.abs((c-window.innerWidth)/e.options.menuWidth)}}),s.addEventListener("touchend",function(n){if(!$)return;$=!1;let o=document.getElementById("sidenav-overlay"),l=y,d=l-e.options.menuWidth,r=l-e.options.menuWidth/2;d>0&&(d=0),r<0&&(r=0),"left"===e.options.edge?a?(0!==d&&t(i,{transform:"translateX(0)"},300,"ease-out"),o&&t(o,{opacity:"1"},50,"ease-out"),s&&(s.style.width="50%",s.style.right="0",s.style.left=""),a=!0):(document.body.style.overflow="",document.body.style.width="",t(i,{transform:"translateX(-100%)"},200,"ease-out",function(){"function"==typeof e.options.onClose&&e.options.onClose.call(i)}),o&&t(o,{opacity:"0"},200,"ease-out",function(){o.parentNode&&o.parentNode.removeChild(o)}),s&&(s.style.width="10px",s.style.right="",s.style.left="0"),a=!1):a?(0!==r&&t(i,{transform:"translateX(0)"},300,"ease-out"),o&&t(o,{opacity:"1"},50,"ease-out"),s&&(s.style.width="50%",s.style.right="",s.style.left="0"),a=!0):(document.body.style.overflow="",document.body.style.width="",t(i,{transform:"translateX(100%)"},200,"ease-out",function(){"function"==typeof e.options.onClose&&e.options.onClose.call(i)}),o&&t(o,{opacity:"0"},200,"ease-out",function(){o.parentNode&&o.parentNode.removeChild(o)}),s&&(s.style.width="10px",s.style.right="0",s.style.left=""),a=!1)})}n.addEventListener("click",function(n){if(n.preventDefault(),!0===a)a=!1,l=!1,d();else{let o=document.body.clientWidth;document.body.style.overflow="hidden",document.body.style.width=o+"px",e.options.draggable&&s&&document.body.appendChild(s);let r=document.createElement("div");r.id="sidenav-overlay",r.style.opacity="0",r.addEventListener("click",function(){a=!1,l=!1,d(),t(r,{opacity:"0"},300,"ease-out",function(){r.parentNode&&r.parentNode.removeChild(r)})}),document.body.appendChild(r),"left"===e.options.edge?(s&&(s.style.width="50%",s.style.right="0",s.style.left=""),t(i,{transform:"translateX(0)"},300,"ease-out")):(s&&(s.style.width="50%",s.style.right="",s.style.left="0"),t(i,{transform:"translateX(0)"},300,"ease-out")),t(r,{opacity:"1"},300,"ease-out",function(){a=!0,l=!1}),"function"==typeof e.options.onOpen&&e.options.onOpen.call(i)}})},n.prototype.destroy=function(){let t=this.elem.getAttribute("data-activates"),e=document.getElementById("sidenav-overlay"),n=document.querySelector(`.drag-target[data-sidenav="${t}"]`);e&&e.click(),n&&n.parentNode&&n.parentNode.removeChild(n)},n.prototype.show=function(){this.elem.click()},n.prototype.hide=function(){let t=document.getElementById("sidenav-overlay");t&&t.click()},window.SideNav=n}();
-/*Waves*/
+(function() {
+    // الدالة المساعدة للأنيميشن باستخدام CSS Transition
+    function animateStyles(el, styles, duration, easing, callback) {
+      el.style.transition = `all ${duration}ms ${easing}`;
+      for (let prop in styles) {
+        el.style[prop] = styles[prop];
+      }
+      setTimeout(function() {
+        el.style.transition = '';
+        if (callback && typeof callback === 'function') callback();
+      }, duration);
+    }
+  
+    // الخيارات الافتراضية
+    const defaults = {
+      menuWidth: 300,
+      edge: BlogDirection === 'rtl' ? 'right' : 'left',
+      closeOnClick: false,
+      draggable: true,
+      inDuration: 300,
+      outDuration: 200,
+      onOpen: null,
+      onClose: null
+    };
+  
+    // كائن الـ SideNav
+    function SideNav(elem, options) {
+      this.elem = elem;
+      this.options = Object.assign({}, defaults, options);
+      this.init();
+    }
+  
+    SideNav.prototype.init = function() {
+      const self = this;
+      const activator = this.elem;
+      const menuId = activator.getAttribute('data-activates');
+      const menu = document.getElementById(menuId);
+      if (!menu) return;
+      
+      // تعيين عرض القائمة
+      if (this.options.menuWidth != 300) {
+        menu.style.width = this.options.menuWidth + "px";
+      }
+      
+      // متغيرات الحالة المحسنة
+      this.isDragged = false;        // يتتبع ما إذا كان السحب نشطًا
+      this.percentOpen = 0;          // نسبة فتح القائمة (0-1)
+      this.menuWidth = this.options.menuWidth;
+      this.startingXpos = 0;         // موقع X الأولي عند بدء السحب
+      this.xPos = 0;                 // موقع X الحالي أثناء السحب
+      this.time = 0;                 // الوقت للحساب السرعة
+      this.velocityX = 0;            // سرعة السحب
+      this.deltaX = 0;               // المسافة المسحوبة
+      this._verticallyScrolling = false; // لتتبع التمرير الرأسي
+      
+      // إنشاء منطقة السحب
+      let dragTarget = document.querySelector(`.drag-target[data-sidenav="${menuId}"]`);
+      if (this.options.draggable) {
+        if (dragTarget) {
+          dragTarget.parentNode.removeChild(dragTarget);
+        }
+        dragTarget = document.createElement('div');
+        dragTarget.className = 'drag-target';
+        dragTarget.setAttribute('data-sidenav', menuId);
+        document.body.appendChild(dragTarget);
+        this.dragTarget = dragTarget;
+      } else {
+        this.dragTarget = null;
+      }
+      
+      // تعيين الموضع الابتدائي بناءً على الحافة (left/right)
+      if (this.options.edge === 'left') {
+        menu.classList.add('left-aligned');
+        menu.style.transform = 'translateX(-100%)';
+        if (this.dragTarget) this.dragTarget.style.left = '0';
+      } else {
+        menu.classList.add('right-aligned');
+        menu.style.transform = 'translateX(100%)';
+        if (this.dragTarget) this.dragTarget.style.right = '0';
+      }
+      
+      // حالة الـ fixed
+      this.isFixed = menu.classList.contains('fixed');
+      if (this.isFixed) {
+        if (window.innerWidth > 992) {
+          menu.style.transform = 'translateX(0)';
+        }
+      }
+  
+      // حالات القائمة
+      this.menuOut = false;
+      this.menu = menu;
+      
+      // إذا closeOnClick مفعل نضيف حدث إغلاق عند الضغط على الروابط
+      this._setupCloseOnClick();
+      
+      // إعداد أحداث السحب المحسنة
+      this._setupDragEvents();
+      
+      // إعداد أحداث تغيير حجم النافذة
+      this._setupResizeEvents();
+      
+      // إعداد حدث النقر على المفعل
+      this._setupActivatorClick();
+    };
+    
+    SideNav.prototype._setupCloseOnClick = function() {
+      if (this.options.closeOnClick === true) {
+        this.menu.addEventListener('click', (e) => {
+          let target = e.target;
+          if (target.tagName.toLowerCase() === 'a' && !target.classList.contains('collapsible-header')) {
+            if (!(window.innerWidth > 992 && this.isFixed)) {
+              this.close();
+            }
+          }
+        });
+      }
+    };
+    
+    SideNav.prototype._setupResizeEvents = function() {
+      if (this.isFixed) {
+        window.addEventListener('resize', () => {
+          if (window.innerWidth > 992) {
+            if (document.getElementById('sidenav-overlay') && this.menuOut) {
+              this.close(true);
+            } else {
+              this.menu.style.transform = 'translateX(0)';
+            }
+          } else if (!this.menuOut) {
+            if (this.options.edge === 'left') {
+              this.menu.style.transform = 'translateX(-100%)';
+            } else {
+              this.menu.style.transform = 'translateX(100%)';
+            }
+          }
+        });
+      }
+    };
+    
+    SideNav.prototype._setupActivatorClick = function() {
+      this.elem.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (this.menuOut === true) {
+          this.close();
+        } else {
+          this.open();
+        }
+      });
+    };
+    
+    SideNav.prototype._setupDragEvents = function() {
+      if (!this.options.draggable || !this.dragTarget) return;
+      
+      // كائن للتتبع حالة اللمس
+      const touchTracker = {
+        touching: false,
+        initialY: 0
+      };
+      
+      // حدث النقر على منطقة السحب
+      this.dragTarget.addEventListener('click', () => {
+        if (this.menuOut) this.close();
+      });
+      
+      // أحداث اللمس المحسنة
+      this.dragTarget.addEventListener('touchstart', (e) => {
+        this._handleDragTargetStart(e, touchTracker);
+      });
+      
+      this.dragTarget.addEventListener('touchmove', (e) => {
+        this._handleDragTargetMove(e, touchTracker);
+      });
+      
+      this.dragTarget.addEventListener('touchend', (e) => {
+        this._handleDragTargetRelease(e, touchTracker);
+      });
+      
+      // إضافة أحداث للقائمة نفسها لإدارة الإغلاق بالسحب
+      if (this.options.edge === 'left') {
+        this.menu.addEventListener('touchstart', (e) => {
+          this._handleMenuStart(e, touchTracker);
+        });
+        
+        this.menu.addEventListener('touchmove', (e) => {
+          this._handleMenuMove(e, touchTracker);
+        });
+        
+        this.menu.addEventListener('touchend', (e) => {
+          this._handleMenuRelease(e, touchTracker);
+        });
+      }
+    };
+    
+    // معالجة بدء السحب على منطقة السحب
+    SideNav.prototype._handleDragTargetStart = function(e, touchTracker) {
+      if (e.touches.length !== 1) return;
+      
+      // تعيين متغيرات بدء السحب
+      this._startDrag(e, touchTracker);
+    };
+    
+    // معالجة السحب المستمر على منطقة السحب
+    SideNav.prototype._handleDragTargetMove = function(e, touchTracker) {
+      if (!touchTracker.touching) return;
+      
+      // تحديث معلومات السحب
+      this._dragMoveUpdate(e);
+      
+      // منع التمرير العمودي إذا كان السحب أفقيًا
+      if (Math.abs(this.deltaX) > 10 && !this._verticallyScrolling) {
+        e.preventDefault();
+        
+        // تعطيل التمرير
+        const oldWidth = document.body.clientWidth;
+        document.body.style.overflow = 'hidden';
+        document.body.style.width = oldWidth + "px";
+        
+        // إنشاء أو تحديث الـ overlay
+        this._setupOrUpdateOverlay();
+        
+        // حساب الموضع الجديد بناءً على الحافة
+        if (this.options.edge === 'left') {
+          this._handleLeftEdgeDrag();
+        } else {
+          this._handleRightEdgeDrag();
+        }
+      } else {
+        // التحقق إذا كان التمرير رأسيًا
+        const deltaY = Math.abs(e.touches[0].clientY - touchTracker.initialY);
+        if (deltaY > 10) {
+          this._verticallyScrolling = true;
+        }
+      }
+    };
+    
+    // معالجة إفراج السحب على منطقة السحب
+    SideNav.prototype._handleDragTargetRelease = function(e, touchTracker) {
+      if (!touchTracker.touching) return;
+      touchTracker.touching = false;
+      
+      // قرار ما إذا كان سيتم فتح أو إغلاق القائمة بناءً على السرعة والمسافة
+      if (this.isDragged) {
+        if (this.percentOpen > 0.3 || this.velocityX > 0.3) {
+          this.open();
+        } else {
+          this.close();
+        }
+        
+        this.isDragged = false;
+        this._verticallyScrolling = false;
+      }
+    };
+    
+    // معالجة بدء السحب على القائمة نفسها
+    SideNav.prototype._handleMenuStart = function(e, touchTracker) {
+      if (e.touches.length !== 1 || !this.menuOut) return;
+      
+      // تعيين متغيرات بدء السحب
+      this._startDrag(e, touchTracker);
+    };
+    
+    // معالجة السحب المستمر على القائمة
+    SideNav.prototype._handleMenuMove = function(e, touchTracker) {
+      if (!touchTracker.touching || !this.menuOut) return;
+      
+      // تحديث معلومات السحب
+      this._dragMoveUpdate(e);
+      
+      // منع التمرير العمودي إذا كان السحب أفقيًا
+      if (Math.abs(this.deltaX) > 10 && !this._verticallyScrolling) {
+        e.preventDefault();
+        
+        // حساب الموضع الجديد بناءً على الحافة
+        if (this.options.edge === 'left') {
+          // حساب النسبة المئوية للإغلاق
+          let translateX = this.xPos - this.startingXpos;
+          if (translateX > 0) translateX = 0;
+          this.percentOpen = 1 + translateX / this.menuWidth;
+          
+          // تحديث موضع القائمة والشفافية
+          this.menu.style.transform = `translateX(${translateX}px)`;
+          const overlay = document.getElementById('sidenav-overlay');
+          if (overlay) overlay.style.opacity = this.percentOpen;
+        } else {
+          // حساب وتطبيق مشابه للحافة اليمنى
+          let translateX = this.xPos - this.startingXpos;
+          if (translateX < 0) translateX = 0;
+          this.percentOpen = 1 - translateX / this.menuWidth;
+          
+          // تحديث موضع القائمة والشفافية
+          this.menu.style.transform = `translateX(${this.menuWidth - translateX}px)`;
+          const overlay = document.getElementById('sidenav-overlay');
+          if (overlay) overlay.style.opacity = this.percentOpen;
+        }
+      } else {
+        // التحقق إذا كان التمرير رأسيًا
+        const deltaY = Math.abs(e.touches[0].clientY - touchTracker.initialY);
+        if (deltaY > 10) {
+          this._verticallyScrolling = true;
+        }
+      }
+    };
+    
+    // معالجة إفراج السحب على القائمة
+    SideNav.prototype._handleMenuRelease = function(e, touchTracker) {
+      if (!touchTracker.touching || !this.menuOut) return;
+      touchTracker.touching = false;
+      
+      // قرار ما إذا كان سيتم فتح أو إغلاق القائمة بناءً على النسبة المئوية
+      if (this.isDragged) {
+        if (this.percentOpen < 0.7) {
+          this.close();
+        } else {
+          this.open();
+        }
+        
+        this.isDragged = false;
+        this._verticallyScrolling = false;
+      }
+    };
+    
+    // دالة مساعدة لبدء السحب
+    SideNav.prototype._startDrag = function(e, touchTracker) {
+      const clientX = e.touches[0].clientX;
+      const clientY = e.touches[0].clientY;
+      
+      this.isDragged = true;
+      this.startingXpos = clientX;
+      this.xPos = this.startingXpos;
+      this.time = Date.now();
+      touchTracker.touching = true;
+      touchTracker.initialY = clientY;
+      this._verticallyScrolling = false;
+    };
+    
+    // دالة مساعدة لتحديث معلومات السحب
+    SideNav.prototype._dragMoveUpdate = function(e) {
+      const clientX = e.touches[0].clientX;
+      
+      // حساب المسافة والسرعة
+      this.deltaX = Math.abs(this.xPos - clientX);
+      this.xPos = clientX;
+      this.velocityX = this.deltaX / (Date.now() - this.time);
+      this.time = Date.now();
+    };
+    
+    // دالة مساعدة للتعامل مع السحب من الحافة اليسرى
+    SideNav.prototype._handleLeftEdgeDrag = function() {
+      let translateX = this.xPos - this.startingXpos;
+      // تقييد translateX بين 0 و menuWidth
+      if (translateX > this.menuWidth) translateX = this.menuWidth;
+      if (translateX < 0) translateX = 0;
+      
+      // حساب النسبة المئوية للفتح
+      this.percentOpen = translateX / this.menuWidth;
+      
+      // تحديث موضع القائمة
+      this.menu.style.transform = `translateX(${translateX - this.menuWidth}px)`;
+      
+      // تحديث شفافية الـ overlay
+      const overlay = document.getElementById('sidenav-overlay');
+      if (overlay) overlay.style.opacity = this.percentOpen;
+    };
+    
+    // دالة مساعدة للتعامل مع السحب من الحافة اليمنى
+    SideNav.prototype._handleRightEdgeDrag = function() {
+      const windowWidth = window.innerWidth;
+      let translateX = windowWidth - this.xPos;
+      
+      // تقييد translateX بين 0 و menuWidth
+      if (translateX > this.menuWidth) translateX = this.menuWidth;
+      if (translateX < 0) translateX = 0;
+      
+      // حساب النسبة المئوية للفتح
+      this.percentOpen = translateX / this.menuWidth;
+      
+      // تحديث موضع القائمة
+      this.menu.style.transform = `translateX(${windowWidth - translateX}px)`;
+      
+      // تحديث شفافية الـ overlay
+      const overlay = document.getElementById('sidenav-overlay');
+      if (overlay) overlay.style.opacity = this.percentOpen;
+    };
+    
+    // إعداد أو تحديث الـ overlay
+    SideNav.prototype._setupOrUpdateOverlay = function() {
+      let overlay = document.getElementById('sidenav-overlay');
+      
+      if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'sidenav-overlay';
+        overlay.style.opacity = '0';
+        
+        overlay.addEventListener('click', () => {
+          this.close();
+        });
+        
+        document.body.appendChild(overlay);
+        
+        // تشغيل استدعاء onOpen
+        if (typeof this.options.onOpen === 'function') {
+          this.options.onOpen.call(this.menu);
+        }
+      }
+      
+      return overlay;
+    };
+    
+    // فتح القائمة الجانبية
+    SideNav.prototype.open = function() {
+      if (this.menuOut === true) return;
+      
+      // تعطيل التمرير
+      const oldWidth = document.body.clientWidth;
+      document.body.style.overflow = 'hidden';
+      document.body.style.width = oldWidth + "px";
+      
+      // إعداد العناصر للعرض
+      const overlay = this._setupOrUpdateOverlay();
+      
+      // تعيين أبعاد منطقة السحب
+      if (this.options.draggable && this.dragTarget) {
+        if (this.options.edge === 'left') {
+          this.dragTarget.style.width = '50%';
+          this.dragTarget.style.right = '0';
+          this.dragTarget.style.left = '';
+        } else {
+          this.dragTarget.style.width = '50%';
+          this.dragTarget.style.right = '';
+          this.dragTarget.style.left = '0';
+        }
+      }
+      
+      // الرسوم المتحركة لفتح القائمة
+      animateStyles(this.menu, { transform: 'translateX(0)' }, this.options.inDuration, 'ease-out');
+      animateStyles(overlay, { opacity: '1' }, this.options.inDuration, 'ease-out', () => {
+        this.menuOut = true;
+      });
+      
+      // تشغيل استدعاء onOpen إذا لم يتم تشغيله عند إنشاء الـ overlay
+      if (typeof this.options.onOpen === 'function' && !document.getElementById('sidenav-overlay')) {
+        this.options.onOpen.call(this.menu);
+      }
+    };
+    
+    // إغلاق القائمة الجانبية
+    SideNav.prototype.close = function(restoreNav) {
+      if (this.menuOut === false) return;
+      
+      this.menuOut = false;
+      
+      // إعادة تمكين التمرير
+      document.body.style.overflow = '';
+      document.body.style.width = '';
+      
+      // الحصول على الـ overlay
+      const overlay = document.getElementById('sidenav-overlay');
+      
+      // إخفاء الـ overlay
+      if (overlay) {
+        animateStyles(overlay, { opacity: '0' }, this.options.outDuration, 'ease-out', function() {
+          if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+        });
+      }
+      
+      // تعيين أبعاد منطقة السحب وتحريك القائمة
+      if (this.options.edge === 'left') {
+        if (this.dragTarget) {
+          this.dragTarget.style.width = '';
+          this.dragTarget.style.right = '';
+          this.dragTarget.style.left = '0';
+        }
+        
+        animateStyles(this.menu, { transform: 'translateX(-100%)' }, this.options.outDuration, 'cubic-bezier(0.25, 0.46, 0.45, 0.94)', () => {
+          if (restoreNav === true) {
+            this.menu.removeAttribute('style');
+            this.menu.style.width = this.options.menuWidth + "px";
+          }
+          
+          if (typeof this.options.onClose === 'function') {
+            this.options.onClose.call(this.menu);
+          }
+        });
+      } else {
+        if (this.dragTarget) {
+          this.dragTarget.style.width = '';
+          this.dragTarget.style.right = '0';
+          this.dragTarget.style.left = '';
+        }
+        
+        animateStyles(this.menu, { transform: 'translateX(100%)' }, this.options.outDuration, 'cubic-bezier(0.25, 0.46, 0.45, 0.94)', () => {
+          if (restoreNav === true) {
+            this.menu.removeAttribute('style');
+            this.menu.style.width = this.options.menuWidth + "px";
+          }
+          
+          if (typeof this.options.onClose === 'function') {
+            this.options.onClose.call(this.menu);
+          }
+        });
+      }
+    };
+    
+    // عرض القائمة الجانبية
+    SideNav.prototype.show = function() {
+      this.open();
+    };
+    
+    // إخفاء القائمة الجانبية
+    SideNav.prototype.hide = function() {
+      this.close();
+    };
+    
+    // تدمير مكون القائمة الجانبية
+    SideNav.prototype.destroy = function() {
+      const menuId = this.elem.getAttribute('data-activates');
+      const overlay = document.getElementById('sidenav-overlay');
+      const dragTarget = document.querySelector(`.drag-target[data-sidenav="${menuId}"]`);
+      
+      // إزالة أحداث السحب
+      if (this.options.draggable && dragTarget) {
+        dragTarget.removeEventListener('touchstart', this._handleDragTargetStart);
+        dragTarget.removeEventListener('touchmove', this._handleDragTargetMove);
+        dragTarget.removeEventListener('touchend', this._handleDragTargetRelease);
+        
+        if (dragTarget.parentNode) {
+          dragTarget.parentNode.removeChild(dragTarget);
+        }
+      }
+      
+      // إغلاق القائمة إذا كانت مفتوحة
+      if (overlay) {
+        overlay.click();
+      }
+      
+      // إزالة مرجع Sidenav من العنصر
+      this.elem._sidenav = null;
+    };
+    
+    // تعريض الكائن كخاصية عالمية
+    window.SideNav = SideNav;
+  })();/*Waves*/
 if(WavesAllow)!function(t){let e={},n=document.querySelectorAll.bind(document);function i(t){let e="";for(let n in t)t.hasOwnProperty(n)&&(e+=n+":"+t[n]+";");return e}let a={duration:750,show:function(t,e){if(2===t.button)return!1;let n=e||this,o=document.createElement("div");o.className="waves-ripple",n.appendChild(o);let r={top:0,left:0},s=n&&n.ownerDocument,u=s.documentElement;void 0!==n.getBoundingClientRect&&(r=n.getBoundingClientRect());let l=s===s.window?s:9===s.nodeType&&s.defaultView,c={top:r.top+l.pageYOffset-u.clientTop,left:r.left+l.pageXOffset-u.clientLeft},d=t.pageY-c.top,f=t.pageX-c.left,m="scale("+n.clientWidth/100*10+")";"touches"in t&&(d=t.touches[0].pageY-c.top,f=t.touches[0].pageX-c.left),o.setAttribute("data-hold",Date.now()),o.setAttribute("data-scale",m),o.setAttribute("data-x",f),o.setAttribute("data-y",d);let p={top:d+"px",left:f+"px"};o.className+=" waves-notransition",o.setAttribute("style",i(p)),o.className=o.className.replace("waves-notransition",""),p["-webkit-transform"]=m,p["-moz-transform"]=m,p["-ms-transform"]=m,p["-o-transform"]=m,p.transform=m,p.opacity="1",p["-webkit-transition-duration"]=a.duration+"ms",p["-moz-transition-duration"]=a.duration+"ms",p["-o-transition-duration"]=a.duration+"ms",p["transition-duration"]=a.duration+"ms",p["-webkit-transition-timing-function"]="cubic-bezier(0.250, 0.460, 0.450, 0.940)",p["-moz-transition-timing-function"]="cubic-bezier(0.250, 0.460, 0.450, 0.940)",p["-o-transition-timing-function"]="cubic-bezier(0.250, 0.460, 0.450, 0.940)",p["transition-timing-function"]="cubic-bezier(0.250, 0.460, 0.450, 0.940)",o.setAttribute("style",i(p))},hide:function(t){o.touchup(t);let e=this,n=e.getElementsByClassName("waves-ripple");if(0===n.length)return!1;let r=n[n.length-1],s=r.getAttribute("data-x"),u=r.getAttribute("data-y"),l=r.getAttribute("data-scale"),c=Date.now()-Number(r.getAttribute("data-hold")),d=350-c;d<0&&(d=0),setTimeout(function(){let t={top:u+"px",left:s+"px",opacity:"0","-webkit-transition-duration":a.duration+"ms","-moz-transition-duration":a.duration+"ms","-o-transition-duration":a.duration+"ms","transition-duration":a.duration+"ms","-webkit-transform":l,"-moz-transform":l,"-ms-transform":l,"-o-transform":l,transform:l};r.setAttribute("style",i(t)),setTimeout(function(){try{e.removeChild(r)}catch(t){return!1}},a.duration)},d)},wrapInput:function(t){for(let e=0;e<t.length;e++){let n=t[e];if("input"===n.tagName.toLowerCase()){let i=n.parentNode;if("i"===i.tagName.toLowerCase()&&-1!==i.className.indexOf("waves-effect"))continue;let a=document.createElement("i");a.className=n.className+" waves-input-wrapper";let o=n.getAttribute("style");o=o||"",a.setAttribute("style",o),n.className="waves-button-input",n.removeAttribute("style"),i.replaceChild(a,n),a.appendChild(n)}}}},o={touches:0,allowEvent:function(t){let e=!0;return"touchstart"===t.type?o.touches+=1:"touchend"===t.type||"touchcancel"===t.type?setTimeout(function(){o.touches>0&&(o.touches-=1)},500):"mousedown"===t.type&&o.touches>0&&(e=!1),e},touchup:function(t){o.allowEvent(t)}};function r(e){let n=function t(e){if(!1===o.allowEvent(e))return null;let n=null,i=e.target||e.srcElement;for(;null!==i.parentNode;){if(!(i instanceof SVGElement)&&-1!==i.className.indexOf("waves-effect")){n=i;break}i=i.parentNode}return n}(e);null!==n&&(a.show(e,n),"ontouchstart"in t&&(n.addEventListener("touchend",a.hide,!1),n.addEventListener("touchcancel",a.hide,!1)),n.addEventListener("mouseup",a.hide,!1),n.addEventListener("mouseleave",a.hide,!1),n.addEventListener("dragend",a.hide,!1))}e.displayEffect=function(e){"duration"in(e=e||{})&&(a.duration=e.duration),a.wrapInput(n(".waves-effect")),"ontouchstart"in t&&document.body.addEventListener("touchstart",r,!1),document.body.addEventListener("mousedown",r,!1)},e.attach=function(e){"input"===e.tagName.toLowerCase()&&(a.wrapInput([e]),e=e.parentNode),"ontouchstart"in t&&e.addEventListener("touchstart",r,!1),e.addEventListener("mousedown",r,!1)},t.Waves=e,e.displayEffect()}(window);else{let t=document.querySelectorAll("body *");for(let e of t)hasClass(e,"waves-effect")&&e.classList.remove("waves-effect"),hasClass(e,"waves-light")&&e.classList.remove("waves-light")}
 /*============================================================
 -->> Tooltips()
