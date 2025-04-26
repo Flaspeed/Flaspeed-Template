@@ -57,9 +57,6 @@ function materialEnter(t,e,i){t.style.display="block",t.style.opacity="0",t.styl
       const menu = document.getElementById(menuId);
       if (!menu) return;
   
-      // تخزين مرجع للقائمة
-      this.menu = menu;
-  
       // تعيين العرض
       if (this.options.menuWidth != 300) {
         menu.style.width = this.options.menuWidth + "px";
@@ -145,17 +142,6 @@ function materialEnter(t,e,i){t.style.display="block",t.style.opacity="0",t.styl
       this._handleCloseDragBound = this._handleCloseDrag.bind(this);
       this._handleCloseReleaseBound = this._handleCloseRelease.bind(this);
       
-      // إضافة معالجات أحداث السحب على القائمة نفسها
-      this._handleMenuDragBound = this._handleMenuDrag.bind(this);
-      this._handleMenuReleaseBound = this._handleMenuRelease.bind(this);
-      this._handleMenuTouchStartBound = this._handleMenuTouchStart.bind(this);
-      
-      // إضافة الأحداث للقائمة نفسها
-      menu.addEventListener('touchstart', this._handleMenuTouchStartBound);
-      menu.addEventListener('touchmove', this._handleMenuDragBound);
-      menu.addEventListener('touchend', this._handleMenuReleaseBound);
-      
-      // أحداث السحب الأخرى
       this.dragTarget.addEventListener('touchmove', this._handleDragTargetDragBound);
       this.dragTarget.addEventListener('touchend', this._handleDragTargetReleaseBound);
       this._overlay.addEventListener('touchmove', this._handleCloseDragBound);
@@ -165,71 +151,6 @@ function materialEnter(t,e,i){t.style.display="block",t.style.opacity="0",t.styl
       if (this.isFixed) {
         this._handleWindowResizeBound = this._handleWindowResize.bind(this);
         window.addEventListener('resize', this._handleWindowResizeBound);
-      }
-    };
-  
-    SideNav.prototype._handleMenuTouchStart = function(e) {
-      // تسجيل بدء لمس القائمة نفسها
-      if (this.isOpen) {
-        // نحن هنا نتعامل مع القائمة المفتوحة بالفعل
-        this._startDrag(e);
-      }
-    };
-  
-    SideNav.prototype._handleMenuDrag = function(e) {
-      // التعامل مع سحب القائمة نفسها فقط إذا كانت مفتوحة
-      if (this.isOpen && !this._verticallyScrolling) {
-        // منع السلوك الافتراضي للصفحة
-        e.preventDefault();
-        
-        if (!this.isDragged) {
-          this._startDrag(e);
-        }
-        
-        this._dragMoveUpdate(e);
-        
-        // حساب deltaX الإجمالي
-        let totalDeltaX = this._xPos - this._startingXpos;
-        
-        // اتجاه السحب
-        let dragDirection = totalDeltaX > 0 ? 'right' : 'left';
-        
-        // التحقق من الاتجاه المسموح به
-        if ((this.options.edge === 'left' && dragDirection === 'left') || 
-            (this.options.edge === 'right' && dragDirection === 'right')) {
-          
-          // حد السحب في الاتجاه المسموح به
-          totalDeltaX = Math.min(this._width, Math.abs(totalDeltaX));
-          
-          // تطبيق الإزاحة
-          if (this.options.edge === 'left') {
-            this.menu.style.transform = `translateX(${-totalDeltaX}px)`;
-          } else {
-            this.menu.style.transform = `translateX(${totalDeltaX}px)`;
-          }
-          
-          // حساب نسبة الفتح
-          this.percentOpen = Math.max(0, 1 - (totalDeltaX / this._width));
-          
-          // تعيين شفافية الطبقة المتراكبة
-          this._overlay.style.opacity = this.percentOpen;
-        }
-      }
-    };
-  
-    SideNav.prototype._handleMenuRelease = function() {
-      // تنفيذ عند رفع الإصبع عن القائمة
-      if (this.isDragged) {
-        if (this.percentOpen > 0.5) {
-          // إبقاء القائمة مفتوحة إذا كانت نسبة الفتح > 50%
-          this.open();
-        } else {
-          // إغلاق القائمة إذا كانت نسبة الفتح < 50%
-          this.close();
-        }
-        
-        this.isDragged = false;
-        this._verticallyScrolling = false;
       }
     };
   
@@ -263,31 +184,16 @@ function materialEnter(t,e,i){t.style.display="block",t.style.opacity="0",t.styl
       this._time = Date.now();
       this._verticallyScrolling = false;
       
-      // إظهار الطبقة المتراكبة إذا لم تكن ظاهرة بالفعل
-      if (this._overlay.style.display !== 'block') {
-        this._overlay.style.display = 'block';
-      }
+      // إظهار الطبقة المتراكبة
+      this._overlay.style.display = 'block';
       
       // حفظ موضع التمرير
-      this._initialScrollTop = this.isOpen ? this.menu.scrollTop : document.documentElement.scrollTop;
+      this._initialScrollTop = this.isOpen ? document.getElementById(this.elem.getAttribute('data-activates')).scrollTop : document.documentElement.scrollTop;
     };
   
     SideNav.prototype._dragMoveUpdate = function(e) {
       const clientX = e.targetTouches[0].clientX;
-      const clientY = e.targetTouches[0].clientY;
-      const currentScrollTop = this.isOpen ? this.menu.scrollTop : document.documentElement.scrollTop;
-      
-      // اكتشاف إذا كان التمرير رأسيًا
-      if (!this._verticallyScrolling) {
-        const deltaY = Math.abs(this._startingYpos - clientY);
-        const deltaX = Math.abs(this._startingXpos - clientX);
-        
-        // إذا كانت الحركة رأسية أكثر من أفقية، نعتبرها تمرير رأسي
-        if (deltaY > deltaX * 1.5) {
-          this._verticallyScrolling = true;
-          return;
-        }
-      }
+      const currentScrollTop = this.isOpen ? document.getElementById(this.elem.getAttribute('data-activates')).scrollTop : document.documentElement.scrollTop;
       
       this.deltaX = Math.abs(this._xPos - clientX);
       this._xPos = clientX;
@@ -308,8 +214,6 @@ function materialEnter(t,e,i){t.style.display="block",t.style.opacity="0",t.styl
       // إذا لم يتم سحبه بعد، قم بتعيين متغيرات بدء السحب الأولية
       if (!this.isDragged) {
         this._startDrag(e);
-        // تخزين الموضع الرأسي الأولي أيضًا
-        this._startingYpos = e.targetTouches[0].clientY;
       }
   
       // تحديث متغيرات السحب
@@ -329,13 +233,14 @@ function materialEnter(t,e,i){t.style.display="block",t.style.opacity="0",t.styl
   
       // حساب إزاحة التحويل والبادئة
       let transformX = totalDeltaX;
+      const menuElement = document.getElementById(this.elem.getAttribute('data-activates'));
       
       if (this.options.edge === 'left') {
         transformX = totalDeltaX - this._width;
-        this.menu.style.transform = `translateX(${transformX}px)`;
+        menuElement.style.transform = `translateX(${transformX}px)`;
       } else {
         transformX = this._width - totalDeltaX;
-        this.menu.style.transform = `translateX(${-transformX}px)`;
+        menuElement.style.transform = `translateX(${-transformX}px)`;
       }
   
       // حساب نسبة الفتح
@@ -352,14 +257,16 @@ function materialEnter(t,e,i){t.style.display="block",t.style.opacity="0",t.styl
   
     SideNav.prototype._handleDragTargetRelease = function() {
       if (this.isDragged) {
+        const menuElement = document.getElementById(this.elem.getAttribute('data-activates'));
+        
         if (this.percentOpen > 0.2) {
           this.open();
         } else {
           // إعادة العنصر إلى موضعه الأصلي
           if (this.options.edge === 'left') {
-            animateStyles(this.menu, { transform: 'translateX(-100%)' }, this.options.outDuration, 'cubic-bezier(0.25, 0.46, 0.45, 0.94)');
+            animateStyles(menuElement, { transform: 'translateX(-100%)' }, this.options.outDuration, 'cubic-bezier(0.25, 0.46, 0.45, 0.94)');
           } else {
-            animateStyles(this.menu, { transform: 'translateX(100%)' }, this.options.outDuration, 'cubic-bezier(0.25, 0.46, 0.45, 0.94)');
+            animateStyles(menuElement, { transform: 'translateX(100%)' }, this.options.outDuration, 'cubic-bezier(0.25, 0.46, 0.45, 0.94)');
           }
           
           // إزالة الطبقة المتراكبة
@@ -388,8 +295,6 @@ function materialEnter(t,e,i){t.style.display="block",t.style.opacity="0",t.styl
         // إذا لم يتم سحبه بعد، قم بتعيين متغيرات بدء السحب الأولية
         if (!this.isDragged) {
           this._startDrag(e);
-          // تخزين الموضع الرأسي الأولي أيضًا
-          this._startingYpos = e.targetTouches[0].clientY;
         }
   
         // تحديث متغيرات السحب
@@ -407,12 +312,13 @@ function materialEnter(t,e,i){t.style.display="block",t.style.opacity="0",t.styl
           totalDeltaX = 0;
         }
   
+        const menuElement = document.getElementById(this.elem.getAttribute('data-activates'));
         let transformX = -totalDeltaX;
         
         if (this.options.edge === 'left') {
-          this.menu.style.transform = `translateX(${transformX}px)`;
+          menuElement.style.transform = `translateX(${transformX}px)`;
         } else {
-          this.menu.style.transform = `translateX(${-transformX}px)`;
+          menuElement.style.transform = `translateX(${-transformX}px)`;
         }
   
         // حساب نسبة الفتح
@@ -425,9 +331,11 @@ function materialEnter(t,e,i){t.style.display="block",t.style.opacity="0",t.styl
   
     SideNav.prototype._handleCloseRelease = function() {
       if (this.isOpen && this.isDragged) {
+        const menuElement = document.getElementById(this.elem.getAttribute('data-activates'));
+        
         if (this.percentOpen > 0.8) {
           // بقاء القائمة مفتوحة
-          animateStyles(this.menu, { transform: 'translateX(0)' }, this.options.inDuration, 'ease-out');
+          animateStyles(menuElement, { transform: 'translateX(0)' }, this.options.inDuration, 'ease-out');
           animateStyles(this._overlay, { opacity: '1' }, this.options.inDuration, 'ease-out');
         } else {
           this.close();
@@ -445,14 +353,16 @@ function materialEnter(t,e,i){t.style.display="block",t.style.opacity="0",t.styl
           if (this.isOpen) {
             this.open();
           } else {
-            this.menu.style.transform = 'translateX(0)';
+            const menuElement = document.getElementById(this.elem.getAttribute('data-activates'));
+            menuElement.style.transform = 'translateX(0)';
           }
         } else {
           if (!this.isOpen) {
+            const menuElement = document.getElementById(this.elem.getAttribute('data-activates'));
             if (this.options.edge === 'left') {
-              this.menu.style.transform = 'translateX(-100%)';
+              menuElement.style.transform = 'translateX(-100%)';
             } else {
-              this.menu.style.transform = 'translateX(100%)';
+              menuElement.style.transform = 'translateX(100%)';
             }
           }
         }
@@ -467,14 +377,16 @@ function materialEnter(t,e,i){t.style.display="block",t.style.opacity="0",t.styl
         return;
       }
   
+      const menuElement = document.getElementById(this.elem.getAttribute('data-activates'));
+      
       // تشغيل الدالة onOpenStart
       if (typeof this.options.onOpenStart === 'function') {
-        this.options.onOpenStart.call(this, this.menu);
+        this.options.onOpenStart.call(this, menuElement);
       }
   
       // معالجة القائمة الثابتة
       if (this._isCurrentlyFixed()) {
-        animateStyles(this.menu, { transform: 'translateX(0)' }, 0, 'easeOutQuad');
+        animateStyles(menuElement, { transform: 'translateX(0)' }, 0, 'easeOutQuad');
         
         if (this.options.preventScrolling) {
           document.body.style.overflow = '';
@@ -499,14 +411,14 @@ function materialEnter(t,e,i){t.style.display="block",t.style.opacity="0",t.styl
           }
           
           animateStyles(
-            this.menu, 
+            menuElement, 
             { transform: 'translateX(0)' }, 
             this.options.inDuration, 
             'ease-out',
             () => {
               // تشغيل الدالة onOpenEnd
               if (typeof this.options.onOpenEnd === 'function') {
-                this.options.onOpenEnd.call(this, this.menu);
+                this.options.onOpenEnd.call(this, menuElement);
               }
             }
           );
@@ -536,15 +448,17 @@ function materialEnter(t,e,i){t.style.display="block",t.style.opacity="0",t.styl
         return;
       }
   
+      const menuElement = document.getElementById(this.elem.getAttribute('data-activates'));
+      
       // تشغيل الدالة onCloseStart
       if (typeof this.options.onCloseStart === 'function') {
-        this.options.onCloseStart.call(this, this.menu);
+        this.options.onCloseStart.call(this, menuElement);
       }
   
       // معالجة القائمة الثابتة
       if (this._isCurrentlyFixed()) {
         let transformX = this.options.edge === 'left' ? '-105%' : '105%';
-        this.menu.style.transform = `translateX(${transformX})`;
+        menuElement.style.transform = `translateX(${transformX})`;
       } else {
         // معالجة القائمة غير الثابتة
         if (this.options.preventScrolling) {
@@ -565,14 +479,14 @@ function materialEnter(t,e,i){t.style.display="block",t.style.opacity="0",t.styl
           let endTransform = `${endPercent * 105}%`;
           
           animateStyles(
-            this.menu, 
+            menuElement, 
             { transform: `translateX(${endTransform})` }, 
             this.options.outDuration, 
             'ease-out',
             () => {
               // تشغيل الدالة onCloseEnd
               if (typeof this.options.onCloseEnd === 'function') {
-                this.options.onCloseEnd.call(this, this.menu);
+                this.options.onCloseEnd.call(this, menuElement);
               }
             }
           );
@@ -601,11 +515,6 @@ function materialEnter(t,e,i){t.style.display="block",t.style.opacity="0",t.styl
       this.dragTarget.removeEventListener('touchend', this._handleDragTargetReleaseBound);
       this._overlay.removeEventListener('touchmove', this._handleCloseDragBound);
       this._overlay.removeEventListener('touchend', this._handleCloseReleaseBound);
-      
-      // إزالة معالجات أحداث القائمة
-      this.menu.removeEventListener('touchstart', this._handleMenuTouchStartBound);
-      this.menu.removeEventListener('touchmove', this._handleMenuDragBound);
-      this.menu.removeEventListener('touchend', this._handleMenuReleaseBound);
       
       if (this.isFixed) {
         window.removeEventListener('resize', this._handleWindowResizeBound);
