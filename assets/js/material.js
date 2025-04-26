@@ -604,7 +604,7 @@ for (let i = 0; i < sideNavs.length; i++) {
 const nav = sideNavs[i],
 mySidenav = new SideNav(nav, {
 menuWidth: 300,
-draggable: true
+isDragged: true
 });
 document.addEventListener("click", function (event) {
 if (!(event.target instanceof Element)) return;
