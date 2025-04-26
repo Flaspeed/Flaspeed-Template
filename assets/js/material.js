@@ -57,6 +57,9 @@ function materialEnter(t,e,i){t.style.display="block",t.style.opacity="0",t.styl
       const menu = document.getElementById(menuId);
       if (!menu) return;
   
+      // حفظ إشارة لعنصر القائمة للاستخدام لاحقاً
+      this.menu = menu;
+  
       // تعيين العرض
       if (this.options.menuWidth != 300) {
         menu.style.width = this.options.menuWidth + "px";
@@ -142,15 +145,87 @@ function materialEnter(t,e,i){t.style.display="block",t.style.opacity="0",t.styl
       this._handleCloseDragBound = this._handleCloseDrag.bind(this);
       this._handleCloseReleaseBound = this._handleCloseRelease.bind(this);
       
+      // إضافة معالجات أحداث جديدة للقائمة نفسها
+      this._handleMenuDragBound = this._handleMenuDrag.bind(this);
+      this._handleMenuReleaseBound = this._handleMenuRelease.bind(this);
+      
       this.dragTarget.addEventListener('touchmove', this._handleDragTargetDragBound);
       this.dragTarget.addEventListener('touchend', this._handleDragTargetReleaseBound);
       this._overlay.addEventListener('touchmove', this._handleCloseDragBound);
       this._overlay.addEventListener('touchend', this._handleCloseReleaseBound);
       
+      // إضافة معالجات أحداث اللمس إلى القائمة نفسها
+      menu.addEventListener('touchstart', this._handleMenuTouchStart.bind(this));
+      menu.addEventListener('touchmove', this._handleMenuDragBound);
+      menu.addEventListener('touchend', this._handleMenuReleaseBound);
+      
       // معالج تغيير حجم النافذة
       if (this.isFixed) {
         this._handleWindowResizeBound = this._handleWindowResize.bind(this);
         window.addEventListener('resize', this._handleWindowResizeBound);
+      }
+    };
+  
+    // دالة جديدة لبدء السحب من القائمة
+    SideNav.prototype._handleMenuTouchStart = function(e) {
+      if (this.isOpen && !this._isCurrentlyFixed()) {
+        this._startDrag(e);
+      }
+    };
+  
+    // دالة جديدة للتعامل مع سحب القائمة
+    SideNav.prototype._handleMenuDrag = function(e) {
+      if (this.isOpen && this.isDragged && !this._isCurrentlyFixed()) {
+        // تحديث متغيرات السحب
+        this._dragMoveUpdate(e);
+  
+        // حساب deltaX الإجمالي
+        let totalDeltaX = this._xPos - this._startingXpos;
+  
+        // اتجاه السحب هو محاولة اتجاه سحب المستخدم
+        let dragDirection = totalDeltaX > 0 ? 'right' : 'left';
+  
+        // لا تسمح بالسحب في الاتجاه المعاكس للحافة المحددة
+        if ((this.options.edge === 'left' && dragDirection === 'right') || 
+            (this.options.edge === 'right' && dragDirection === 'left')) {
+          return;
+        }
+  
+        // لا تسمح بتجاوز عرض القائمة
+        totalDeltaX = Math.min(this._width, Math.abs(totalDeltaX));
+  
+        // حساب إزاحة التحويل
+        let transformX = 0;
+        
+        if (this.options.edge === 'left') {
+          transformX = -totalDeltaX;
+          this.menu.style.transform = `translateX(${transformX}px)`;
+        } else {
+          transformX = totalDeltaX;
+          this.menu.style.transform = `translateX(${-transformX}px)`;
+        }
+  
+        // حساب نسبة الفتح
+        this.percentOpen = Math.max(0, 1 - totalDeltaX / this._width);
+        
+        // تعيين شفافية الطبقة المتراكبة
+        this._overlay.style.opacity = this.percentOpen;
+      }
+    };
+  
+    // دالة جديدة للتعامل مع إنهاء سحب القائمة
+    SideNav.prototype._handleMenuRelease = function() {
+      if (this.isOpen && this.isDragged) {
+        if (this.percentOpen > 0.8) {
+          // بقاء القائمة مفتوحة
+          animateStyles(this.menu, { transform: 'translateX(0)' }, this.options.inDuration, 'ease-out');
+          animateStyles(this._overlay, { opacity: '1' }, this.options.inDuration, 'ease-out');
+        } else {
+          this.close();
+        }
+  
+        this.isDragged = false;
+        this._verticallyScrolling = false;
       }
     };
   
@@ -515,6 +590,14 @@ function materialEnter(t,e,i){t.style.display="block",t.style.opacity="0",t.styl
       this.dragTarget.removeEventListener('touchend', this._handleDragTargetReleaseBound);
       this._overlay.removeEventListener('touchmove', this._handleCloseDragBound);
       this._overlay.removeEventListener('touchend', this._handleCloseReleaseBound);
+      
+      // إزالة معالجات الأحداث من القائمة
+      const menuElement = document.getElementById(this.elem.getAttribute('data-activates'));
+      if (menuElement) {
+        menuElement.removeEventListener('touchstart', this._handleMenuTouchStart);
+        menuElement.removeEventListener('touchmove', this._handleMenuDragBound);
+        menuElement.removeEventListener('touchend', this._handleMenuReleaseBound);
+      }
       
       if (this.isFixed) {
         window.removeEventListener('resize', this._handleWindowResizeBound);
