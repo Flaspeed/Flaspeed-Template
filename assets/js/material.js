@@ -238,6 +238,11 @@ function initDropdown(elements, options = {}) {
       if (e.target.closest('button.sp-btn') || e.target.closest('.sp-btn')) {
         return;
       }
+      
+      // إذا كان النقر على العنصر الأصلي أو داخل القائمة المنسدلة، نخرج دون إغلاق
+      if (e.target === origin || (activates && activates.contains(e.target))) {
+        return;
+      }
 
       hideDropdown();
       document.removeEventListener('click', documentClickHandler);
@@ -258,12 +263,32 @@ function initDropdown(elements, options = {}) {
     // إزالة مستمع النقر من العنصر أولاً قبل إضافة أي مستمعات جديدة
     origin.removeEventListener('click', clickHandler);
 
-    // إعداد الأحداث حسب الخيارات
+    // إعداد الأحداث 
+    // متغير لتتبع حالة القائمة
+    let open = false;
+    
+    // إضافة مستمع النقر دائماً بغض النظر عن وضع hover
+    origin.addEventListener('click', function(e) {
+      if (origin === e.currentTarget && 
+          !e.target.closest(".dropdown-content")) {
+        e.preventDefault();
+        if (curr_options.stopPropagation) {
+          e.stopPropagation();
+        }
+        
+        // تبديل حالة القائمة عند النقر
+        if (origin.classList.contains("active")) {
+          hideDropdown();
+        } else {
+          placeDropdown("click");
+        }
+      }
+    });
+    
+    // إذا كان وضع hover مفعل، نضيف مستمعات الحدث الخاصة بالتحويم
     if (curr_options.hover) {
-      let open = false;
-
       origin.addEventListener('mouseenter', (e) => {
-        if (open === false) {
+        if (!origin.classList.contains("active")) {
           placeDropdown();
           open = true;
         }
@@ -272,8 +297,11 @@ function initDropdown(elements, options = {}) {
       origin.addEventListener('mouseleave', (e) => {
         const toEl = e.relatedTarget;
         if (!toEl || !activates.contains(toEl)) {
-          hideDropdown();
-          open = false;
+          // نخفي القائمة فقط إذا كانت مفتوحة بواسطة التحويم وليس بواسطة النقر
+          if (open) {
+            hideDropdown();
+            open = false;
+          }
         }
       });
 
@@ -281,14 +309,14 @@ function initDropdown(elements, options = {}) {
         activates.addEventListener('mouseleave', (e) => {
           const toEl = e.relatedTarget;
           if (!toEl || !origin.contains(toEl)) {
-            hideDropdown();
-            open = false;
+            // نخفي القائمة فقط إذا كانت مفتوحة بواسطة التحويم وليس بواسطة النقر
+            if (open) {
+              hideDropdown();
+              open = false;
+            }
           }
         });
       }
-    } else {
-      // إضافة مستمع النقر فقط إذا لم يكن في وضع hover
-      origin.addEventListener('click', clickHandler);
     }
 
     // إضافة أحداث النقر للعناصر داخل القائمة لمنع إغلاق القائمة عند النقر على زر sp-btn
