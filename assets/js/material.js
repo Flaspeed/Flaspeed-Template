@@ -45,59 +45,17 @@ window._vanillaTooltips.set(tooltipId, new VanillaTooltip(btn,{delay: 50,positio
 /*============================================================
 -->> DropMenu()
 ==============================================================*/
-        // كود التهيئة الذي يدعم أحداث النقر والتحويم معًا
-        document.addEventListener("click", function (event) {
-          if (!(event.target instanceof Element)) return;
-          const el = event.target.closest(".dropdown-button");
-          if (!el) return;
-          
-          if(!el.hasAttribute("data-initialized")){
-              // تهيئة القائمة المنسدلة والإعداد
-              initializeDropdown(el);
-          }
-      });
-      
-
-          // الحصول على جميع الأزرار التي تحتوي على data-hover="true"
-          const hoverButtons = document.querySelectorAll('.dropdown-button[data-hover="true"]');
-          
-
-              for (let i = 0; i < hoverButtons.length; i++) {
-                  const el = hoverButtons[i];
-              if(!el.hasAttribute("data-initialized")){
-                  // تهيئة القائمة بدعم التحويم
-                  initializeDropdown(el);
-                  
-                  // إضافة مستمع حدث التحويم للفتح
-                  el.addEventListener('mouseenter', function() {
-                      if (!el.classList.contains('active')) {
-                          el.dropdown("open");
-                      }
-                  });
-              }
-          };
-      
-      // دالة مساعدة لتهيئة القائمة المنسدلة
-      function initializeDropdown(el) {
-          // التحقق من وجود خاصية data-hover
-          let hasHover = el.hasAttribute("data-hover") && el.getAttribute("data-hover") === "true";
-          
-          // إعداد الخيارات المخصصة
-          let spAlignment = {};
-          if (el.dataset.target === 'vBookmarks') {
-              spAlignment = {alignment: BlogDirection === 'rtl' ? 'left' : 'right'};
-          }
-          
-          // إضافة خاصية hover إلى الإعدادات إذا كانت موجودة
-          if (hasHover) {
-              spAlignment.hover = true;
-          }
-          
-          // تهيئة القائمة المنسدلة بالإعدادات
-          el.dropdown(spAlignment);
-          el.setAttribute("data-initialized", "true");
-      }
-
+document.addEventListener("click", function (event) {
+if (!(event.target instanceof Element)) return;
+const el = event.target.closest(".dropdown-button");
+if (!el) return;
+if(!el.hasAttribute("data-initialized")){
+const spAlignment = el.dataset.target === 'vBookmarks' ? {alignment:BlogDirection === 'rtl' ? 'left' : 'right'} : '';
+el.dropdown(spAlignment);
+el.setAttribute("data-initialized", "true");
+el.dropdown("open");
+}
+});
 /*============================================================
 -->> Drawer()
 ==============================================================*/
