@@ -67,7 +67,7 @@ function initDropdown(elements, options = {}) {
     hover: false,
     gutter: 0,
     belowOrigin: true,
-    alignment: BlogDirection === 'rtl' ? 'right' : 'left',
+    alignment: typeof BlogDirection !== 'undefined' && BlogDirection === 'rtl' ? 'right' : 'left',
     stopPropagation: false
   };
 
@@ -77,21 +77,8 @@ function initDropdown(elements, options = {}) {
     // دمج الخيارات المخصصة مع الخيارات الافتراضية
     let curr_options = Object.assign({}, defaults, options);
     let isFocused = false;
-    
-    // متغير لتتبع مصدر التفعيل (التحويم أو النقر)
-    let activationSource = null;
 
-    // الحصول على عنصر dropdown المرتبط
-    let activatesId = origin.getAttribute("data-target");
-    let activates = document.getElementById(activatesId);
-
-    // تأكد أن العنصر المنسدل مخفي في البداية
-    if (activates) {
-      activates.style.display = 'none';
-      activates.style.opacity = '0';
-    }
-
-    // تحديث الخيارات من سمات العنصر
+    // تحديث الخيارات من سمات العنصر - نقلناها للأعلى لتكون متاحة قبل أي حدث
     function updateOptions() {
       if (origin.dataset.induration !== undefined) curr_options.inDuration = parseInt(origin.dataset.induration);
       if (origin.dataset.outduration !== undefined) curr_options.outDuration = parseInt(origin.dataset.outduration);
@@ -105,10 +92,47 @@ function initDropdown(elements, options = {}) {
 
     updateOptions();
 
+    // تعريف معالج النقر في النطاق الصحيح
+    const clickHandler = function(e) {
+      if (!isFocused) {
+        if (origin === e.currentTarget &&
+            !origin.classList.contains("active") &&
+            !e.target.closest(".dropdown-content")) {
+          e.preventDefault();
+          if (curr_options.stopPropagation) {
+            e.stopPropagation();
+          }
+          placeDropdown("click");
+        } else if (origin.classList.contains("active")) {
+          // إذا كان النقر على زر أو عنصر يحمل الكلاس sp-btn لا نفعل شيئًا
+          if (e.target.closest('button.sp-btn') || e.target.closest('.sp-btn')) {
+            return;
+          }
+          hideDropdown();
+          document.removeEventListener('click', documentClickHandler);
+        }
+      }
+    };
+
+    // الحصول على عنصر dropdown المرتبط
+    let activatesId = origin.getAttribute("data-target");
+    let activates = document.getElementById(activatesId);
+
+    // تأكد أن العنصر المنسدل مخفي في البداية
+    if (activates) {
+      activates.style.display = 'none';
+      activates.style.opacity = '0';
+    }
+
     // إدراج عنصر dropdown بعد العنصر الأصلي إذا لم يكن بالفعل
     if (activates && origin.nextElementSibling !== activates) {
       origin.parentNode.insertBefore(activates, origin.nextElementSibling);
     }
+
+    // متغير لتتبع حالة القائمة بناء على التحويم
+    let hoverOpen = false;
+    // متغير لتتبع ما إذا كانت القائمة مفتوحة بشكل عام
+    let isOpen = false;
 
     // دالة وضع dropdown في مكانه الصحيح
     function placeDropdown(eventType) {
@@ -116,12 +140,13 @@ function initDropdown(elements, options = {}) {
         isFocused = true;
       }
 
-      // تحديد مصدر التفعيل
-      if (eventType) {
-        activationSource = eventType;
-      }
-
       updateOptions();
+
+      // تحديث حالة القائمة
+      isOpen = true;
+      if (eventType === "mouseenter") {
+        hoverOpen = true;
+      }
 
       activates.classList.add("active");
       origin.classList.add("active");
@@ -236,12 +261,9 @@ function initDropdown(elements, options = {}) {
 
     // دالة إخفاء dropdown باستخدام تأثير الخروج
     function hideDropdown() {
-      // إذا كان مصدر التفعيل هو التحويم، نحتاج لإعادة ضبط المتغير
-      if (activationSource === 'hover') {
-        activationSource = null;
-      }
-      
       isFocused = false;
+      isOpen = false;
+      hoverOpen = false;
 
       materialExit(activates, curr_options.outDuration, () => {
         activates.classList.remove("active");
@@ -251,32 +273,10 @@ function initDropdown(elements, options = {}) {
       });
     }
 
-    // تعريف معالج النقر في النطاق الصحيح
-    const clickHandler = function(e) {
-      if (!isFocused) {
-        if (origin === e.currentTarget &&
-            !origin.classList.contains("active") &&
-            !e.target.closest(".dropdown-content")) {
-          e.preventDefault();
-          if (curr_options.stopPropagation) {
-            e.stopPropagation();
-          }
-          placeDropdown("click");
-        } else if (origin.classList.contains("active")) {
-          // إذا كان النقر على زر أو عنصر يحمل الكلاس sp-btn لا نفعل شيئًا
-          if (e.target.closest('button.sp-btn') || e.target.closest('.sp-btn')) {
-            return;
-          }
-          hideDropdown();
-          document.removeEventListener('click', documentClickHandler);
-        }
-      }
-    };
-
-    // إزالة مستمع النقر من العنصر أولاً قبل إضافة أي مستمعات جديدة
+    // إزالة مستمعات الأحداث القديمة قبل إضافة جديدة
     origin.removeEventListener('click', clickHandler);
-
-    // إضافة مستمع النقر دائماً بغض النظر عن وضع hover
+    
+    // إضافة دائماً مستمع النقر بغض النظر عن وضع hover
     origin.addEventListener('click', function(e) {
       if (origin === e.currentTarget && 
           !e.target.closest(".dropdown-content")) {
@@ -286,7 +286,7 @@ function initDropdown(elements, options = {}) {
         }
 
         // تبديل حالة القائمة عند النقر
-        if (origin.classList.contains("active") && activationSource === 'click') {
+        if (origin.classList.contains("active")) {
           hideDropdown();
         } else {
           placeDropdown("click");
@@ -294,59 +294,48 @@ function initDropdown(elements, options = {}) {
       }
     });
 
-    // معالجات أحداث التحويم
-    let hoverTimeout = null;
+    // إزالة مستمعات الأحداث القديمة لمنع التكرار
+    origin.removeEventListener('mouseenter', handleMouseEnter);
+    origin.removeEventListener('mouseleave', handleMouseLeave);
+    if (activates) {
+      activates.removeEventListener('mouseleave', handleActivatesMouseLeave);
+    }
 
-    // إذا كان وضع hover مفعل، نضيف مستمعات الحدث الخاصة بالتحويم
+    // تعريف مستمعات الأحداث للتحويم بشكل منفصل
+    function handleMouseEnter(e) {
+      if (!isOpen) {
+        placeDropdown("mouseenter");
+      }
+    }
+
+    function handleMouseLeave(e) {
+      const toEl = e.relatedTarget;
+      if (!toEl || !activates || !activates.contains(toEl)) {
+        // نخفي القائمة فقط إذا كانت مفتوحة بواسطة التحويم
+        if (hoverOpen) {
+          hideDropdown();
+        }
+      }
+    }
+
+    function handleActivatesMouseLeave(e) {
+      const toEl = e.relatedTarget;
+      if (!toEl || !origin.contains(toEl)) {
+        // نخفي القائمة فقط إذا كانت مفتوحة بواسطة التحويم
+        if (hoverOpen) {
+          hideDropdown();
+        }
+      }
+    }
+
+    // إضافة مستمعات التحويم بغض النظر عن الإعدادات (سيتم التحقق من الإعدادات داخل الدوال)
     if (curr_options.hover) {
-      origin.addEventListener('mouseenter', (e) => {
-        // إلغاء أي مؤقت حالي لإخفاء القائمة
-        if (hoverTimeout) {
-          clearTimeout(hoverTimeout);
-          hoverTimeout = null;
-        }
-
-        if (!origin.classList.contains("active")) {
-          placeDropdown("hover");
-        }
-      });
-
-      origin.addEventListener('mouseleave', (e) => {
-        const toEl = e.relatedTarget;
-        if (!toEl || !activates.contains(toEl)) {
-          // تأخير إخفاء القائمة لمنع الرمش عند التحرك بين العنصر والقائمة
-          hoverTimeout = setTimeout(() => {
-            // نخفي القائمة فقط إذا كانت مفتوحة بواسطة التحويم وليس بواسطة النقر
-            if (activationSource === 'hover') {
-              hideDropdown();
-            }
-            hoverTimeout = null;
-          }, 150);
-        }
-      });
+      // التسجيل الفوري لمستمعات التحويم
+      origin.addEventListener('mouseenter', handleMouseEnter);
+      origin.addEventListener('mouseleave', handleMouseLeave);
 
       if (activates) {
-        activates.addEventListener('mouseenter', (e) => {
-          // إلغاء أي مؤقت حالي لإخفاء القائمة
-          if (hoverTimeout) {
-            clearTimeout(hoverTimeout);
-            hoverTimeout = null;
-          }
-        });
-
-        activates.addEventListener('mouseleave', (e) => {
-          const toEl = e.relatedTarget;
-          if (!toEl || !origin.contains(toEl)) {
-            // تأخير إخفاء القائمة لمنع الرمش عند التحرك بين العنصر والقائمة
-            hoverTimeout = setTimeout(() => {
-              // نخفي القائمة فقط إذا كانت مفتوحة بواسطة التحويم وليس بواسطة النقر
-              if (activationSource === 'hover') {
-                hideDropdown();
-              }
-              hoverTimeout = null;
-            }, 150);
-          }
-        });
+        activates.addEventListener('mouseleave', handleActivatesMouseLeave);
       }
     }
 
@@ -363,7 +352,7 @@ function initDropdown(elements, options = {}) {
 
     // إضافة مستمعي أحداث للفتح والإغلاق المبرمج
     origin.addEventListener('open', (e) => {
-      placeDropdown(e.detail || 'programmatic');
+      placeDropdown(e.detail);
     });
 
     origin.addEventListener('close', hideDropdown);
@@ -379,6 +368,7 @@ NodeList.prototype.dropdown = function(options) {
 HTMLElement.prototype.dropdown = function(options) {
   return initDropdown([this], options);
 };
+
 /*Drawer*/
 !function(){function t(t,e,i,s,n){for(let o in t.style.transition=`all ${i}ms ${s}`,e)t.style[o]=e[o];setTimeout(function(){t.style.transition="",n&&"function"==typeof n&&n()},i)}let e={menuWidth:300,edge:"rtl"===BlogDirection?"right":"left",closeOnClick:!1,inDuration:250,outDuration:200,onOpenStart:null,onOpenEnd:null,onCloseStart:null,onCloseEnd:null,preventScrolling:!0};function i(t,i){this.elem=t,this.options=Object.assign({},e,i),this.isDragged=!1,this.isOpen=!1,this._startingXpos=0,this._xPos=0,this._time=0,this._width=0,this.percentOpen=0,this._verticallyScrolling=!1,this.lastWindowWidth=window.innerWidth,this.lastWindowHeight=window.innerHeight,this.init()}i.prototype.init=function(){let t=this,e=this.elem,i=e.getAttribute("data-activates"),s=document.getElementById(i);if(!s)return;300!=this.options.menuWidth&&(s.style.width=this.options.menuWidth+"px"),this._width=s.getBoundingClientRect().width;let n=document.querySelector(`.drag-target[data-sidenav="${i}"]`);n&&n.parentNode.removeChild(n),(n=document.createElement("div")).className="drag-target",n.setAttribute("data-sidenav",i),document.body.appendChild(n),this.dragTarget=n,this._createOverlay(i),"left"===this.options.edge?(s.classList.add("left-aligned"),s.style.transform="translateX(-100%)",this.dragTarget.style.left="0"):(s.classList.add("right-aligned"),s.style.transform="translateX(100%)",this.dragTarget.style.right="0"),this.isFixed=s.classList.contains("fixed"),this.isFixed&&this._setupFixed(),this._setupEventHandlers(s,i),!0===this.options.closeOnClick&&this._setupCloseOnClick(s),e.addEventListener("click",function(e){e.preventDefault(),t.isOpen?t.close():t.open()})},i.prototype._createOverlay=function(t){let e=document.getElementById("sidenav-overlay");e&&e.parentNode.removeChild(e),(e=document.createElement("div")).id="sidenav-overlay",e.style.opacity="0",e.style.display="none";let i=this;e.addEventListener("click",function(){i.close()}),document.body.appendChild(e),this._overlay=e},i.prototype._setupEventHandlers=function(t,e){this._handleDragTargetDragBound=this._handleDragTargetDrag.bind(this),this._handleDragTargetReleaseBound=this._handleDragTargetRelease.bind(this),this._handleCloseDragBound=this._handleCloseDrag.bind(this),this._handleCloseReleaseBound=this._handleCloseRelease.bind(this),this.dragTarget.addEventListener("touchmove",this._handleDragTargetDragBound),this.dragTarget.addEventListener("touchend",this._handleDragTargetReleaseBound),this._overlay.addEventListener("touchmove",this._handleCloseDragBound),this._overlay.addEventListener("touchend",this._handleCloseReleaseBound),this.isFixed&&(this._handleWindowResizeBound=this._handleWindowResize.bind(this),window.addEventListener("resize",this._handleWindowResizeBound))},i.prototype._setupCloseOnClick=function(t){let e=this;t.addEventListener("click",function(t){let i=t.target;"a"!==i.tagName.toLowerCase()||i.classList.contains("collapsible-header")||window.innerWidth>992&&e.isFixed||e.close()})},i.prototype._setupFixed=function(){this._isCurrentlyFixed()&&this.open()},i.prototype._isCurrentlyFixed=function(){return this.isFixed&&window.innerWidth>992},i.prototype._startDrag=function(t){let e=t.targetTouches[0].clientX;this.isDragged=!0,this._startingXpos=e,this._xPos=this._startingXpos,this._time=Date.now(),this._verticallyScrolling=!1,this._overlay.style.display="block",this._initialScrollTop=this.isOpen?document.getElementById(this.elem.getAttribute("data-activates")).scrollTop:document.documentElement.scrollTop},i.prototype._dragMoveUpdate=function(t){let e=t.targetTouches[0].clientX,i=this.isOpen?document.getElementById(this.elem.getAttribute("data-activates")).scrollTop:document.documentElement.scrollTop;this.deltaX=Math.abs(this._xPos-e),this._xPos=e,this.velocityX=this.deltaX/(Date.now()-this._time),this._time=Date.now(),this._initialScrollTop!==i&&(this._verticallyScrolling=!0)},i.prototype._handleDragTargetDrag=function(t){if(this._isCurrentlyFixed()||this._verticallyScrolling)return;this.isDragged||this._startDrag(t),this._dragMoveUpdate(t);let e=this._xPos-this._startingXpos,i=e>0?"right":"left";e=Math.min(this._width,Math.abs(e)),this.options.edge===i&&(e=0);let s=e,n=document.getElementById(this.elem.getAttribute("data-activates"));"left"===this.options.edge?(s=e-this._width,n.style.transform=`translateX(${s}px)`):(s=this._width-e,n.style.transform=`translateX(${-s}px)`),this.percentOpen=Math.min(1,e/this._width),this._overlay.style.opacity=this.percentOpen,this.options.preventScrolling&&(document.body.style.overflow="hidden")},i.prototype._handleDragTargetRelease=function(){if(this.isDragged){let e=document.getElementById(this.elem.getAttribute("data-activates"));this.percentOpen>.2?this.open():("left"===this.options.edge?t(e,{transform:"translateX(-100%)"},this.options.outDuration,"cubic-bezier(0.25, 0.46, 0.45, 0.94)"):t(e,{transform:"translateX(100%)"},this.options.outDuration,"cubic-bezier(0.25, 0.46, 0.45, 0.94)"),t(this._overlay,{opacity:"0"},this.options.outDuration,"ease-out",()=>{this._overlay.style.display="none"}),this.options.preventScrolling&&(document.body.style.overflow="")),this.isDragged=!1,this._verticallyScrolling=!1}},i.prototype._handleCloseDrag=function(t){if(this.isOpen){if(this._isCurrentlyFixed()||this._verticallyScrolling)return;this.isDragged||this._startDrag(t),this._dragMoveUpdate(t);let e=this._xPos-this._startingXpos,i=e>0?"right":"left";e=Math.min(this._width,Math.abs(e)),this.options.edge!==i&&(e=0);let s=document.getElementById(this.elem.getAttribute("data-activates")),n=-e;"left"===this.options.edge?s.style.transform=`translateX(${n}px)`:s.style.transform=`translateX(${-n}px)`,this.percentOpen=Math.min(1,1-e/this._width),this._overlay.style.opacity=this.percentOpen}},i.prototype._handleCloseRelease=function(){if(this.isOpen&&this.isDragged){let e=document.getElementById(this.elem.getAttribute("data-activates"));this.percentOpen>.8?(t(e,{transform:"translateX(0)"},this.options.inDuration,"ease-out"),t(this._overlay,{opacity:"1"},this.options.inDuration,"ease-out")):this.close(),this.isDragged=!1,this._verticallyScrolling=!1}},i.prototype._handleWindowResize=function(){if(this.lastWindowWidth!==window.innerWidth){if(window.innerWidth>992){if(this.isOpen)this.open();else{let t=document.getElementById(this.elem.getAttribute("data-activates"));t.style.transform="translateX(0)"}}else if(!this.isOpen){let e=document.getElementById(this.elem.getAttribute("data-activates"));"left"===this.options.edge?e.style.transform="translateX(-100%)":e.style.transform="translateX(100%)"}}this.lastWindowWidth=window.innerWidth,this.lastWindowHeight=window.innerHeight},i.prototype.open=function(){if(!0===this.isOpen)return;let e=document.getElementById(this.elem.getAttribute("data-activates"));if("function"==typeof this.options.onOpenStart&&this.options.onOpenStart.call(this,e),this._isCurrentlyFixed())t(e,{transform:"translateX(0)"},0,"easeOutQuad"),this.options.preventScrolling&&(document.body.style.overflow=""),this._overlay.style.display="none";else if(this.options.preventScrolling&&(document.body.style.overflow="hidden"),!this.isDragged||1!=this.percentOpen){let i="left"===this.options.edge?-1:1,s=100*i;this.isDragged&&(s="left"===this.options.edge?s+100*this.percentOpen:s-100*this.percentOpen),t(e,{transform:"translateX(0)"},this.options.inDuration,"ease-out",()=>{"function"==typeof this.options.onOpenEnd&&this.options.onOpenEnd.call(this,e)}),this._overlay.style.display="block";let n=0;this.isDragged&&(n=this.percentOpen),t(this._overlay,{opacity:"1"},this.options.inDuration,"ease-out")}this.isOpen=!0},i.prototype.close=function(){if(!1===this.isOpen)return;let e=document.getElementById(this.elem.getAttribute("data-activates"));if("function"==typeof this.options.onCloseStart&&this.options.onCloseStart.call(this,e),this._isCurrentlyFixed()){let i="left"===this.options.edge?"-105%":"105%";e.style.transform=`translateX(${i})`}else if(this.options.preventScrolling&&(document.body.style.overflow=""),this.isDragged&&0==this.percentOpen)this._overlay.style.display="none";else{let s="left"===this.options.edge?-1:1,n=0;this.isDragged&&(n="left"===this.options.edge?s+this.percentOpen:s-this.percentOpen);t(e,{transform:`translateX(${105*s}%)`},this.options.outDuration,"ease-out",()=>{"function"==typeof this.options.onCloseEnd&&this.options.onCloseEnd.call(this,e)}),t(this._overlay,{opacity:"0"},this.options.outDuration,"ease-out",()=>{this._overlay.style.display="none"})}this.isOpen=!1},i.prototype.destroy=function(){this.dragTarget.removeEventListener("touchmove",this._handleDragTargetDragBound),this.dragTarget.removeEventListener("touchend",this._handleDragTargetReleaseBound),this._overlay.removeEventListener("touchmove",this._handleCloseDragBound),this._overlay.removeEventListener("touchend",this._handleCloseReleaseBound),this.isFixed&&window.removeEventListener("resize",this._handleWindowResizeBound),this.elem.getAttribute("data-activates"),this.dragTarget&&this.dragTarget.parentNode&&this.dragTarget.parentNode.removeChild(this.dragTarget),this._overlay&&this._overlay.parentNode&&this._overlay.parentNode.removeChild(this._overlay),this.elem.M_SideNav=void 0},i.prototype.show=function(){this.open()},i.prototype.hide=function(){this.close()},window.SideNav=i}();
 /*Waves*/
