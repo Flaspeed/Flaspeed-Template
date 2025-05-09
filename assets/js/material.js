@@ -67,7 +67,7 @@ function initDropdown(elements, options = {}) {
     hover: false,
     gutter: 0,
     belowOrigin: true,
-    alignment: BlogDirection === 'rtl' ? 'right' : 'left',
+    alignment: typeof BlogDirection !== 'undefined' ? (BlogDirection === 'rtl' ? 'right' : 'left') : 'left',
     stopPropagation: false
   };
 
@@ -77,28 +77,6 @@ function initDropdown(elements, options = {}) {
     // دمج الخيارات المخصصة مع الخيارات الافتراضية
     let curr_options = Object.assign({}, defaults, options);
     let isFocused = false;
-
-    // تعريف معالج النقر في النطاق الصحيح (خارج الشرط) ليكون متاحًا للجميع
-    const clickHandler = function(e) {
-      if (!isFocused) {
-        if (origin === e.currentTarget &&
-            !origin.classList.contains("active") &&
-            !e.target.closest(".dropdown-content")) {
-          e.preventDefault();
-          if (curr_options.stopPropagation) {
-            e.stopPropagation();
-          }
-          placeDropdown("click");
-        } else if (origin.classList.contains("active")) {
-          // إذا كان النقر على زر أو عنصر يحمل الكلاس sp-btn لا نفعل شيئًا
-          if (e.target.closest('button.sp-btn') || e.target.closest('.sp-btn')) {
-            return;
-          }
-          hideDropdown();
-          document.removeEventListener('click', documentClickHandler);
-        }
-      }
-    };
 
     // الحصول على عنصر dropdown المرتبط
     let activatesId = origin.getAttribute("data-target");
@@ -266,6 +244,7 @@ function initDropdown(elements, options = {}) {
     // إعداد الأحداث 
     // متغير لتتبع حالة القائمة
     let open = false;
+    let wasClickActivated = false;
     
     // إضافة مستمع النقر دائماً بغض النظر عن وضع hover
     origin.addEventListener('click', function(e) {
@@ -279,8 +258,10 @@ function initDropdown(elements, options = {}) {
         // تبديل حالة القائمة عند النقر
         if (origin.classList.contains("active")) {
           hideDropdown();
+          wasClickActivated = false;
         } else {
           placeDropdown("click");
+          wasClickActivated = true;
         }
       }
     });
@@ -289,16 +270,18 @@ function initDropdown(elements, options = {}) {
     if (curr_options.hover) {
       origin.addEventListener('mouseenter', (e) => {
         if (!origin.classList.contains("active")) {
-          placeDropdown();
+          placeDropdown("hover");
           open = true;
+          wasClickActivated = false;
         }
       });
 
       origin.addEventListener('mouseleave', (e) => {
         const toEl = e.relatedTarget;
-        if (!toEl || !activates.contains(toEl)) {
-          // نخفي القائمة فقط إذا كانت مفتوحة بواسطة التحويم وليس بواسطة النقر
-          if (open) {
+        // نتأكد أن المؤشر لم ينتقل إلى داخل القائمة المنسدلة
+        if (!toEl || (activates && !activates.contains(toEl))) {
+          // نخفي القائمة فقط إذا لم تكن مفعلة بواسطة النقر
+          if (!wasClickActivated) {
             hideDropdown();
             open = false;
           }
@@ -308,9 +291,10 @@ function initDropdown(elements, options = {}) {
       if (activates) {
         activates.addEventListener('mouseleave', (e) => {
           const toEl = e.relatedTarget;
+          // نتأكد أن المؤشر لم ينتقل إلى الزر الأصلي
           if (!toEl || !origin.contains(toEl)) {
-            // نخفي القائمة فقط إذا كانت مفتوحة بواسطة التحويم وليس بواسطة النقر
-            if (open) {
+            // نخفي القائمة فقط إذا لم تكن مفعلة بواسطة النقر
+            if (!wasClickActivated) {
               hideDropdown();
               open = false;
             }
