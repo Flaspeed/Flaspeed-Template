@@ -39,6 +39,9 @@ function materialExit(element, duration, callback) {
 
 // الدالة الرئيسية للعناصر المنسدلة (dropdown)
 function initDropdown(elements, options = {}) {
+  // تتبع جميع العناصر النشطة
+  const activeElements = new Set();
+  
   // إذا تم تمرير "open" كخيار، قم بفتح جميع العناصر المنسدلة المحددة
   if (options === "open") {
     for (let i = 0; i < elements.length; i++) {
@@ -71,45 +74,61 @@ function initDropdown(elements, options = {}) {
     stopPropagation: false
   };
 
+  // إضافة مستمع النقر العام للمستند
+  document.addEventListener('click', (e) => {
+    // تجاهل النقر على الأزرار الخاصة
+    if (e.target.closest('button.sp-btn') || e.target.closest('.sp-btn')) {
+      return;
+    }
+    
+    // إغلاق جميع العناصر المنسدلة النشطة إذا تم النقر خارجها
+    activeElements.forEach(item => {
+      const { origin, activates, hideDropdown } = item;
+      if (e.target !== origin && !origin.contains(e.target) && 
+          !activates.contains(e.target)) {
+        hideDropdown();
+      }
+    });
+  });
+
   // تنفيذ الوظيفة لكل عنصر من العناصر المحددة
   for (let i = 0; i < elements.length; i++) {
     const origin = elements[i];
+    
+    // إزالة مستمعات الأحداث الموجودة مسبقاً
+    const oldHandlers = origin._dropdownHandlers || {};
+    if (oldHandlers.click) origin.removeEventListener('click', oldHandlers.click);
+    if (oldHandlers.mouseenter) origin.removeEventListener('mouseenter', oldHandlers.mouseenter);
+    if (oldHandlers.mouseleave) origin.removeEventListener('mouseleave', oldHandlers.mouseleave);
+    if (oldHandlers.open) origin.removeEventListener('open', oldHandlers.open);
+    if (oldHandlers.close) origin.removeEventListener('close', oldHandlers.close);
+    
     // دمج الخيارات المخصصة مع الخيارات الافتراضية
     let curr_options = Object.assign({}, defaults, options);
-    let isFocused = false;
-
-    // تعريف معالج النقر في النطاق الصحيح (خارج الشرط) ليكون متاحًا للجميع
-    const clickHandler = function(e) {
-      if (!isFocused) {
-        if (origin === e.currentTarget &&
-            !origin.classList.contains("active") &&
-            !e.target.closest(".dropdown-content")) {
-          e.preventDefault();
-          if (curr_options.stopPropagation) {
-            e.stopPropagation();
-          }
-          placeDropdown("click");
-        } else if (origin.classList.contains("active")) {
-          // إذا كان النقر على زر أو عنصر يحمل الكلاس sp-btn لا نفعل شيئًا
-          if (e.target.closest('button.sp-btn') || e.target.closest('.sp-btn')) {
-            return;
-          }
-          hideDropdown();
-          document.removeEventListener('click', documentClickHandler);
-        }
-      }
-    };
-
+    
     // الحصول على عنصر dropdown المرتبط
     let activatesId = origin.getAttribute("data-target");
     let activates = document.getElementById(activatesId);
+    
+    // تخزين حالة العنصر
+    let isOpened = false;
+    let hoverTimeout = null;
 
     // تأكد أن العنصر المنسدل مخفي في البداية وإعداده
     if (activates) {
+      // إزالة مستمعات الأحداث السابقة
+      if (activates._dropdownHandlers && activates._dropdownHandlers.mouseleave) {
+        activates.removeEventListener('mouseleave', activates._dropdownHandlers.mouseleave);
+      }
+      
       activates.style.display = 'none';
       activates.style.opacity = '0';
-      // إضافة أنماط التموضع الأساسية هنا لتجنب مشاكل التهيئة
       activates.style.position = 'absolute';
+      
+      // إدراج عنصر dropdown بعد العنصر الأصلي إذا لم يكن بالفعل
+      if (origin.nextElementSibling !== activates) {
+        origin.parentNode.insertBefore(activates, origin.nextElementSibling);
+      }
     }
 
     // تحديث الخيارات من سمات العنصر
@@ -124,26 +143,18 @@ function initDropdown(elements, options = {}) {
       if (origin.dataset.stoppropagation !== undefined) curr_options.stopPropagation = origin.dataset.stoppropagation === 'true';
     }
 
-    updateOptions();
-
-    // إدراج عنصر dropdown بعد العنصر الأصلي إذا لم يكن بالفعل
-    if (activates && origin.nextElementSibling !== activates) {
-      origin.parentNode.insertBefore(activates, origin.nextElementSibling);
-    }
-
-    // متغير لتتبع حالة فتح القائمة
-    let isOpened = false;
-    
     // دالة وضع dropdown في مكانه الصحيح
     function placeDropdown(eventType) {
-      if (eventType === "focus") {
-        isFocused = true;
-      }
-
+      // إذا كانت القائمة مفتوحة بالفعل، لا نفعل شيئاً
+      if (isOpened) return;
+      
       updateOptions();
-
+      
       // تعيين الحالة لمفتوح
       isOpened = true;
+      
+      // إضافة العنصر للقائمة النشطة للتتبع
+      activeElements.add({ origin, activates, hideDropdown });
       
       activates.classList.add("active");
       origin.classList.add("active");
@@ -154,16 +165,18 @@ function initDropdown(elements, options = {}) {
         activates.style.width = originWidth + 'px';
       }
 
-      // تعيين العنصر بشكل مؤقت لحساب أبعاده (مع visibility:hidden حتى لا يظهر)
-      activates.style.display = 'block';
-      activates.style.visibility = 'hidden';
-      activates.style.opacity = '0';
-      activates.style.transform = 'scale(0.8)';
-
+      // حساب الموضع المناسب
       const windowWidth = window.innerWidth;
       const windowHeight = window.innerHeight;
       const originHeight = origin.clientHeight;
       const originRect = origin.getBoundingClientRect();
+      
+      // تعيين العنصر بشكل مؤقت لحساب أبعاده
+      activates.style.display = 'block';
+      activates.style.visibility = 'hidden';
+      activates.style.opacity = '0';
+      activates.style.transform = 'scale(0.8)';
+      
       const activatesWidth = activates.offsetWidth;
       const activatesHeight = activates.offsetHeight;
 
@@ -234,94 +247,31 @@ function initDropdown(elements, options = {}) {
       materialEnter(activates, curr_options.inDuration, () => {
         activates.style.height = '';
       });
-
-      setTimeout(() => {
-        document.addEventListener('click', documentClickHandler);
-      }, 0);
     }
-
-    // معالج النقر على المستند لإخفاء dropdown
-    const documentClickHandler = function(e) {
-      // إذا تم النقر على زر أو عنصر يحمل الكلاس sp-btn، فقط نخرج من الدالة بدون إيقاف انتشار الحدث
-      if (e.target.closest('button.sp-btn') || e.target.closest('.sp-btn')) {
-        return;
-      }
-      
-      // إذا كان النقر على العنصر الأصلي أو داخل القائمة المنسدلة، نخرج دون إغلاق
-      if (e.target === origin || (activates && activates.contains(e.target))) {
-        return;
-      }
-
-      hideDropdown();
-      document.removeEventListener('click', documentClickHandler);
-    };
 
     // دالة إخفاء dropdown باستخدام تأثير الخروج
     function hideDropdown() {
       // إذا لم تكن القائمة مفتوحة، لا نفعل شيئًا
       if (!isOpened) return;
       
-      isFocused = false;
-      isOpened = false;  // تعيين الحالة لمغلق
+      isOpened = false;
+      
+      // إزالة العنصر من قائمة العناصر النشطة
+      activeElements.forEach(item => {
+        if (item.origin === origin) {
+          activeElements.delete(item);
+        }
+      });
 
       materialExit(activates, curr_options.outDuration, () => {
         activates.classList.remove("active");
         origin.classList.remove("active");
-        document.removeEventListener('click', documentClickHandler);
         activates.style.maxHeight = '';
       });
     }
 
-    // إزالة مستمعات الأحداث القديمة 
-    origin.removeEventListener('click', clickHandler);
-    origin.removeEventListener('mouseenter', handleMouseEnter);
-    origin.removeEventListener('mouseleave', handleMouseLeave);
-    
-    if (activates) {
-      activates.removeEventListener('mouseleave', handleActivatesMouseLeave);
-    }
-
-    // دالة مستمع حدث دخول الماوس
-    function handleMouseEnter(e) {
-      if (curr_options.hover && !isOpened) {
-        placeDropdown("hover");
-      }
-    }
-
-    // دالة مستمع حدث خروج الماوس من الزر
-    function handleMouseLeave(e) {
-      if (!curr_options.hover) return;
-      
-      const toEl = e.relatedTarget;
-      if (!toEl || (activates && !activates.contains(toEl))) {
-        // نتأكد من أن الماوس لا يزال فوق القائمة المنسدلة نفسها
-        setTimeout(() => {
-          if (!document.querySelector(':hover') || 
-              !activates.contains(document.querySelector(':hover'))) {
-            hideDropdown();
-          }
-        }, 50);
-      }
-    }
-
-    // دالة مستمع حدث خروج الماوس من القائمة المنسدلة
-    function handleActivatesMouseLeave(e) {
-      if (!curr_options.hover) return;
-      
-      const toEl = e.relatedTarget;
-      if (!toEl || !origin.contains(toEl)) {
-        setTimeout(() => {
-          if (!document.querySelector(':hover') || 
-              (!origin.contains(document.querySelector(':hover')) && 
-               !activates.contains(document.querySelector(':hover')))) {
-            hideDropdown();
-          }
-        }, 50);
-      }
-    }
-
-    // إضافة مستمع النقر دائماً بغض النظر عن وضع hover
-    origin.addEventListener('click', function(e) {
+    // معالج النقر
+    const clickHandler = function(e) {
       if (origin === e.currentTarget && 
           !e.target.closest(".dropdown-content")) {
         e.preventDefault();
@@ -336,16 +286,95 @@ function initDropdown(elements, options = {}) {
           placeDropdown("click");
         }
       }
-    });
+    };
+
+    // معالج دخول الماوس
+    const mouseEnterHandler = function(e) {
+      if (curr_options.hover) {
+        // إلغاء أي مؤقت خروج سابق
+        if (hoverTimeout) {
+          clearTimeout(hoverTimeout);
+          hoverTimeout = null;
+        }
+        
+        // فتح القائمة المنسدلة
+        placeDropdown("hover");
+      }
+    };
+
+    // معالج خروج الماوس
+    const mouseLeaveHandler = function(e) {
+      if (curr_options.hover) {
+        // إلغاء أي مؤقت سابق
+        if (hoverTimeout) {
+          clearTimeout(hoverTimeout);
+        }
+        
+        // تحديد العنصر الذي انتقل إليه المؤشر
+        const toElement = e.relatedTarget;
+        
+        // إذا انتقل المؤشر إلى القائمة المنسدلة، لا نفعل شيئًا
+        if (toElement && activates.contains(toElement)) {
+          return;
+        }
+        
+        // إنشاء مؤقت للإغلاق بعد فترة قصيرة
+        hoverTimeout = setTimeout(function() {
+          hideDropdown();
+          hoverTimeout = null;
+        }, 50);
+      }
+    };
+
+    // معالج خروج الماوس من القائمة المنسدلة
+    const activatesMouseLeaveHandler = function(e) {
+      if (curr_options.hover) {
+        // إلغاء أي مؤقت سابق
+        if (hoverTimeout) {
+          clearTimeout(hoverTimeout);
+        }
+        
+        // تحديد العنصر الذي انتقل إليه المؤشر
+        const toElement = e.relatedTarget;
+        
+        // إذا انتقل المؤشر إلى الزر، لا نفعل شيئًا
+        if (toElement && origin.contains(toElement)) {
+          return;
+        }
+        
+        // إنشاء مؤقت للإغلاق بعد فترة قصيرة
+        hoverTimeout = setTimeout(function() {
+          hideDropdown();
+          hoverTimeout = null;
+        }, 50);
+      }
+    };
+
+    // معالج حدث الفتح المبرمج
+    const openHandler = function(e) {
+      placeDropdown(e.detail);
+    };
+
+    // معالج حدث الإغلاق المبرمج
+    const closeHandler = function() {
+      hideDropdown();
+    };
+
+    // إضافة مستمعات الأحداث
+    origin.addEventListener('click', clickHandler);
+    origin.addEventListener('open', openHandler);
+    origin.addEventListener('close', closeHandler);
     
     // إذا كان وضع hover مفعل، نضيف مستمعات الحدث الخاصة بالتحويم
     if (curr_options.hover) {
-      // إضافة مستمعات الأحداث الجديدة
-      origin.addEventListener('mouseenter', handleMouseEnter);
-      origin.addEventListener('mouseleave', handleMouseLeave);
+      origin.addEventListener('mouseenter', mouseEnterHandler);
+      origin.addEventListener('mouseleave', mouseLeaveHandler);
       
       if (activates) {
-        activates.addEventListener('mouseleave', handleActivatesMouseLeave);
+        activates.addEventListener('mouseleave', activatesMouseLeaveHandler);
+        activates._dropdownHandlers = {
+          mouseleave: activatesMouseLeaveHandler
+        };
       }
     }
 
@@ -360,12 +389,17 @@ function initDropdown(elements, options = {}) {
       }
     }
 
-    // إضافة مستمعي أحداث للفتح والإغلاق المبرمج
-    origin.addEventListener('open', (e) => {
-      placeDropdown(e.detail);
-    });
-
-    origin.addEventListener('close', hideDropdown);
+    // تخزين مستمعات الأحداث للإزالة لاحقاً
+    origin._dropdownHandlers = {
+      click: clickHandler,
+      mouseenter: mouseEnterHandler,
+      mouseleave: mouseLeaveHandler,
+      open: openHandler,
+      close: closeHandler
+    };
+    
+    // تهيئة الأحداث التي سبق الاشتراك بها
+    updateOptions();
   }
 }
 
