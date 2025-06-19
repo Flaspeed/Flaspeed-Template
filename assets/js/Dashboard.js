@@ -320,10 +320,13 @@ class AuthManager {
     sendToGoogleSheets(action, blogData, userData) {
         try {
             // عنوان API لـ Google Apps Script
-            const apiUrl = 'https://script.google.com/macros/s/AKfycbyMsK5ixXVc7dffQBzySG-vta-puoj1m4RQkatH0x897P6GpqS4d94aMUvo_HzodKuk/exec';
+            const apiUrl = 'https://script.google.com/macros/s/AKfycbz7Yzhuzukn6EGRlGG2WrERYtU3AL-ina59ptnLXqWrX-yTqirj9aVAUgnaW_b4bXCa/exec';
             
             // تجهيز البيانات كمعلمات URL لتجنب مشكلة CORS
             const params = new URLSearchParams();
+            
+            // إضافة كلمة المرور للحماية
+            params.append('password', '!scod!com?');
             
             // إضافة نوع العملية
             params.append('action', action); // 'add' أو 'delete_row'
