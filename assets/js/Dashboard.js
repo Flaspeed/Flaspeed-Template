@@ -320,7 +320,7 @@ class AuthManager {
     sendToGoogleSheets(action, blogData, userData) {
         try {
             // عنوان API لـ Google Apps Script
-            const apiUrl = 'https://script.google.com/macros/s/AKfycbzzxHGZuufAjQ-BNLeOEpQJJdPTMcHoH1C2mZfLBWybStsnGiuhg5FG8JHiqhs-CVGn/exec';
+            const apiUrl = 'https://script.google.com/macros/s/AKfycbzcce4INDCdVnmRMtgFApUgidByJraSyLJe63-A406CQIc0MgtVw05LOgNS8lvyU53g/exec';
             
             // تجهيز البيانات كمعلمات URL لتجنب مشكلة CORS
             const params = new URLSearchParams();
