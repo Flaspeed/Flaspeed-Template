@@ -346,9 +346,6 @@ class AuthManager {
             // إرسال البيانات باستخدام fetch API مع طلب GET
             fetch(fullUrl)
             .then(response => response.json())
-            .then(result => {
-                console.log('Google Sheets response:', result);
-            })
             .catch(error => {
                 console.error('Error sending data to Google Sheets:', error);
             });
