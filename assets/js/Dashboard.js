@@ -320,22 +320,31 @@ class AuthManager {
     sendToGoogleSheets(action, blogData, userData) {
         try {
             // عنوان API لـ Google Apps Script
-            const apiUrl = 'https://script.google.com/macros/s/AKfycby1r63HfvmmWJ2A3kFNJ1p9aRhjpepPeYLfklHNxYJj2pyKVa5ww4e9Fkv5QkxkNpNW/exec';
+            const apiUrl = 'https://script.google.com/macros/s/AKfycbyRSJNrwYasuG4tHgEHO8UBAp7gFI8CNl-nqsE9qG_Q-dPlyDyw_s9JkXdu5aWAJjjc/exec';
             
-            // تجهيز البيانات كمعلمات URL لتجنب مشاكل CORS
+            // تجهيز البيانات كمعلمات URL لتجنب مشكلة CORS
             const params = new URLSearchParams();
+            
+            // إضافة نوع العملية
             params.append('action', action); // 'add' أو 'remove'
-            params.append('blogId', blogData.id);
-            params.append('blogName', blogData.name);
-            params.append('blogUrl', blogData.url);
-            params.append('activationDate', blogData.activationDate);
-            params.append('userEmail', userData.email);
+            
+            // إضافة بيانات المدونة
+            params.append('blogId', blogData.id || '');
+            params.append('blogName', blogData.name || '');
+            params.append('blogUrl', blogData.url || '');
+            params.append('activationDate', blogData.activationDate || new Date().toISOString());
+            
+            // إضافة بيانات المستخدم
+            params.append('userEmail', userData.email || '');
             params.append('username', userData.username || '');
             params.append('plan', userData.plan || 'basic');
             params.append('status', userData.status || 'active');
             
-            // إرسال البيانات باستخدام fetch API مع طريقة GET
-            fetch(`${apiUrl}?${params.toString()}`)
+            // إنشاء عنوان URL كامل مع المعلمات
+            const fullUrl = `${apiUrl}?${params.toString()}`;
+            
+            // إرسال البيانات باستخدام fetch API مع طلب GET
+            fetch(fullUrl)
             .then(response => response.json())
             .then(result => {
                 console.log('Google Sheets response:', result);
@@ -486,7 +495,6 @@ class AuthManager {
                     await remove(blogRef);
                     
                     // إرسال بيانات المدونة إلى Google Sheets لتسجيل عملية الحذف
-                    // استخدام الطريقة الجديدة لإرسال البيانات لتجنب مشاكل CORS
                     this.sendToGoogleSheets('remove', blogData, userData);
                     
                     // تحديث واجهة المستخدم
