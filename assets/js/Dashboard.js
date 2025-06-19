@@ -326,7 +326,7 @@ class AuthManager {
             const params = new URLSearchParams();
             
             // إضافة كلمة المرور للحماية
-            params.append('password', '!scod!com?');
+            params.append('password', 'codi-188');
             
             // إضافة نوع العملية
             params.append('action', action); // 'add' أو 'delete_row'
