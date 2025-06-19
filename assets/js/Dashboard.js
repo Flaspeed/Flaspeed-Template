@@ -322,26 +322,20 @@ class AuthManager {
             // عنوان API لـ Google Apps Script
             const apiUrl = 'https://script.google.com/macros/s/AKfycbzDQD6AXKE0zOk--6WA5km-GRsPh6d87c_gAzWw1IdMX9AS-fMouwQHM-_tyrTum3wb/exec';
             
-            // تجهيز البيانات للإرسال
-            const data = {
-                action: action, // 'add' أو 'remove'
-                blogData: blogData,
-                userData: {
-                    email: userData.email,
-                    username: userData.username || '',
-                    plan: userData.plan || 'basic',
-                    status: userData.status || 'active'
-                }
-            };
+            // تجهيز البيانات كمعلمات URL لتجنب مشاكل CORS
+            const params = new URLSearchParams();
+            params.append('action', action); // 'add' أو 'remove'
+            params.append('blogId', blogData.id);
+            params.append('blogName', blogData.name);
+            params.append('blogUrl', blogData.url);
+            params.append('activationDate', blogData.activationDate);
+            params.append('userEmail', userData.email);
+            params.append('username', userData.username || '');
+            params.append('plan', userData.plan || 'basic');
+            params.append('status', userData.status || 'active');
             
-            // إرسال البيانات باستخدام fetch API
-            fetch(apiUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(data)
-            })
+            // إرسال البيانات باستخدام fetch API مع طريقة GET
+            fetch(`${apiUrl}?${params.toString()}`)
             .then(response => response.json())
             .then(result => {
                 console.log('Google Sheets response:', result);
@@ -492,6 +486,7 @@ class AuthManager {
                     await remove(blogRef);
                     
                     // إرسال بيانات المدونة إلى Google Sheets لتسجيل عملية الحذف
+                    // استخدام الطريقة الجديدة لإرسال البيانات لتجنب مشاكل CORS
                     this.sendToGoogleSheets('remove', blogData, userData);
                     
                     // تحديث واجهة المستخدم
