@@ -320,13 +320,13 @@ class AuthManager {
     sendToGoogleSheets(action, blogData, userData) {
         try {
             // عنوان API لـ Google Apps Script
-            const apiUrl = 'https://script.google.com/macros/s/AKfycbwpInEuqTQLX84blQRPNmjf13AzG1RVk2TGE-fu3LEVW7Ip9dwkJtP6NW3BQoMERZec/exec';
+            const apiUrl = 'https://script.google.com/macros/s/AKfycbxA9nV3hd85-XGBAxpm34HY8UT39ZdhAUgU1RC00iFUcyp0t5SQQJIJAT9kqOh16DZN/exec';
             
             // تجهيز البيانات كمعلمات URL لتجنب مشكلة CORS
             const params = new URLSearchParams();
             
             // إضافة نوع العملية
-            params.append('action', action); // 'add' أو 'remove'
+            params.append('action', action); // 'add' أو 'delete_row'
             
             // إضافة بيانات المدونة
             params.append('blogId', blogData.id || '');
@@ -491,7 +491,7 @@ class AuthManager {
                     // حذف المدونة من قاعدة البيانات
                     await remove(blogRef);
                     
-                    // إرسال بيانات المدونة إلى Google Sheets لحذف السجل نهائياً
+                    // إرسال بيانات المدونة إلى Google Sheets لحذف الصف نهائياً
                     this.sendToGoogleSheets('delete_row', blogData, userData);
                     
                     // تحديث واجهة المستخدم
