@@ -2783,7 +2783,7 @@ class AuthManager {
                         </td>
                     `;
 
-                    usersTableBody.innerHTML = row;
+                    usersTableBody.appendChild(row);
                     applyLanguageToNewElements(usersTableBody);
                 }
 
